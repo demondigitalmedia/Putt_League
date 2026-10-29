@@ -379,6 +379,22 @@
         if (!hides(nx, ny) && !blocked(nx, ny, fp, m)) return { x: nx, y: ny, moved: true, relief: true };
       }
     }
+    // relief from being pinned against something big (the silo, the box truck, a kettle, a fermenter): a lie tucked
+    // within a couple of metres of it, with it square in the way, slides around it (same distance to the basket)
+    // just far enough to see past its edge. Lies farther back play it as it lies.
+    const big = [{ k: 'c', x: SILO.x, y: SILO.y, r: SILO.r }, { k: 'b', x: BOX_TRUCK.x, y: BOX_TRUCK.y + 2.3, hx: BOX_TRUCK.hx, hy: BOX_TRUCK.hy + 2.3 }]
+      .concat(KETTLES.map(q => ({ k: 'c', x: q.x, y: q.y, r: q.r }))).concat(FERMENTERS.map(q => ({ k: 'c', x: q.x, y: q.y, r: q.r })));
+    const gap = (o, px, py) => o.k === 'c' ? Math.hypot(px - o.x, py - o.y) - o.r : Math.max(Math.abs(px - o.x) - o.hx, Math.abs(py - o.y) - o.hy);
+    const inWay = (o, px, py) => { for (let i = 1; i < 24; i++) { const k = i / 24, qx = px + (bk.x - px) * k, qy = py + (bk.y - py) * k; if (gap(o, qx, qy) < 0.35) return true; } return false; };
+    for (const o of big) {
+      if (gap(o, res.x, res.y) > 2.2 || !inWay(o, res.x, res.y)) continue;
+      const a0 = Math.atan2(res.y - bk.y, res.x - bk.x);
+      for (let da = 0.03; da < 1.2; da += 0.03) for (const sg of [1, -1]) {
+        const a = a0 + sg * da, nx = bk.x + Math.cos(a) * d0, ny = bk.y + Math.sin(a) * d0;
+        if (Math.hypot(nx - res.x, ny - res.y) > 5) break;
+        if (!inWay(o, nx, ny) && !blocked(nx, ny, fp, m)) return { x: nx, y: ny, moved: true, relief: true };
+      }
+    }
     return res;
   }
 

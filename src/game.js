@@ -182,7 +182,7 @@
   app.addEventListener('pointerdown', function (e) {
     if (G.state === 'preview' || G.state === 'intro') { skipPreview(); return; }
     if (G.state !== 'aim' || !$('sheet').hidden) return;
-    if (e.target.closest && e.target.closest('#top button, #viewBtn, #power, #discBtn, #teeBtn, #card, #sheet, #skipBtn, #pickBtn, #hole.pick')) return;
+    if (e.target.closest && e.target.closest('#top button, #viewBtn, #power, #discBtn, #teeBtn, #card, #sheet, #skipBtn, #pickBtn, #retryBtn, #hole.pick')) return;
     var p = local(e);
     var onRet = !RET.behind && !onDisc(p) && Math.hypot(p.x - RET.sx, p.y - RET.sy) < 40;
     if (IN.pid === null && !IN.aim && (onRet || (G.aiming && !onDisc(p) && nTouches() === 0))) {
@@ -690,6 +690,8 @@
   /* ---------- the throw ---------- */
   function throwIt(a) {
     if (!G.target) { IN.pts = []; drawStroke(); flashHint('PLACE YOUR AIM FIRST: TAP WHERE TO THROW'); var t = $('hint'); t.classList.remove('nudge'); void t.offsetWidth; t.classList.add('nudge'); return; }
+    if (G.mode === 'pitch') G.snap = { hole: G.hole, lie: G.lie ? { x: G.lie.x, y: G.lie.y } : null, stroke: G.stroke, score: G.score, shown: G.shown, streak: G.streak, missStreak: G.missStreak,
+      holeAwards: G.holeAwards, holeScore: G.holeScore, jackpot: G.jackpot, results: G.results.slice(), logLen: G.holeLog.length, target: Object.assign({}, G.target), hyz: G.hyz, nose: G.nose, power: G.power, disc: G.disc };
     G.state = 'busy';
     var c = a.read, p = Object.assign({}, solved()), o = origin();
     var dev = a.chord - classCenter(c), aimErr = clamp(-dev * 0.3, -4, 4);
@@ -932,6 +934,18 @@
     word('PICKED UP', { x: L.W / 2, y: L.H * 0.4 }, '#fff', 34);
     setTimeout(holeCard, 700);
   });
+  // DEV: retry the last Pitch throw from the same spot, as if it never happened
+  function showRetry() { var b = $('retryBtn'); if (b) b.hidden = !(G.mode === 'pitch' && G.snap && G.snap.hole === G.hole && (G.state === 'aim' || (G.state === 'card' && G.cardKind === 'hole'))); }
+  $('retryBtn').addEventListener('click', function () {
+    var S = G.snap; if (!S || S.hole !== G.hole || !(G.state === 'aim' || G.state === 'card')) return;
+    if (G.state === 'card') { $('card').hidden = true; $('cardBtns').classList.remove('in'); }
+    G.lie = S.lie; G.stroke = S.stroke; G.score = S.score; G.shown = S.shown; G.streak = S.streak; G.missStreak = S.missStreak;
+    G.holeAwards = S.holeAwards; G.holeScore = S.holeScore; G.jackpot = S.jackpot; G.results = S.results.slice(); G.holeLog.length = S.logLen; G.disc = S.disc;
+    $('tally').innerHTML = ''; ink.clearRect(0, 0, L.W, L.H); IN.pts = []; disc.visible = false;
+    beginAim(false);
+    G.target = S.target; G.hyz = S.hyz; G.nose = S.nose; G.power = S.power; showPower(); showNose(); showDisc(); showScore(); showStreak(); scheduleSolve(); setHint();
+    flashHint('RETRY: SAME SPOT, SAME AIM');
+  });
   function showStreak() { var st = $('streak'); if (G.mode !== 'free' && G.streak >= 2) { st.hidden = false; st.textContent = 'STREAK x' + multFor(G.streak); } else st.hidden = true; }
   function showTally(list, noPts, done) {
     var box = $('tally'); box.innerHTML = '';
@@ -1004,7 +1018,7 @@
     showPick();
   }
   function startHole(flyover) {
-    G.shot = 0; G.stroke = 0; G.lie = null; G.results = []; G.jackpot = false; G.holeAwards = 0; G.holeScore = null; G.view = 'tee'; G.zoom = 0; G.target = null; G.nose = 0; G.hyz = 0;
+    G.snap = null; G.shot = 0; G.stroke = 0; G.lie = null; G.results = []; G.jackpot = false; G.holeAwards = 0; G.holeScore = null; G.view = 'tee'; G.zoom = 0; G.target = null; G.nose = 0; G.hyz = 0;
     document.querySelectorAll('#shots .dot').forEach(function (d, i) { d.className = 'dot' + (i === 0 ? ' on' : ''); });
     $('shots').style.display = G.mode === 'putt' ? 'flex' : 'none';
     buildGlows(); showMeta(); autoDisc();
@@ -1120,7 +1134,7 @@
       aimRing.visible = air || !!(G.target && G.target.floor); if (aimRing.visible) { aimRing.position.copy(tp).setY(0.02); aimRing.rotation.x = -Math.PI / 2; }
       dropLine.visible = air; if (air) { dropLine.position.copy(tp); dropLine.scale.set(1, tp.y, 1); dropLine.computeLineDistances(); }
     } else { $('aimTag').style.opacity = '0'; aimRing.visible = false; dropLine.visible = false; }
-    updateGlows(clock); updateReticle();
+    updateGlows(clock); updateReticle(); showRetry();
     renderer.render(scene, camera);
     stepParts();
     requestAnimationFrame(frame);

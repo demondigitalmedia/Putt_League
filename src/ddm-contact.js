@@ -350,11 +350,13 @@
         // so a spinning disc kicks sideways off a face and trades some spin for it (Coulomb impulse, capped
         // at what would make the rim roll along the face; a solid disc needs a third of the slip for that)
         const nUp = S.n || v3(0, 0, 1), w = mul(nUp, (S.omega || 0) * spinSign), rc = mul(Nn, -DISC_R);
-        const vr = cross(w, rc), vrT = sub(vr, mul(Nn, dot(vr, Nn))), slip = add(vt, vrT), slipL = len(slip);
+        const vr0 = cross(w, rc), vr = v3(vr0.x, vr0.y, 0), vrT = sub(vr, mul(Nn, dot(vr, Nn))), slip = add(vt, vrT), slipL = len(slip);   // spin kicks sideways, never up
         const jn = (1 + e) * -vn, grab = mat.friction * 0.8;
         let dv = v3(0, 0, 0);
-        if (slipL > 1e-6) dv = mul(slip, -Math.min(grab * jn, slipL / 3) / slipL);
+        if (slipL > 1e-6) dv = mul(slip, -Math.min(grab * jn, slipL / 3, 3.5) / slipL);
+        const sp0 = len(S.vel);
         S.vel = add(add(vt, dv), mul(Nn, -vn * e));
+        { const sp1 = len(S.vel); if (sp1 > sp0 * 0.98) S.vel = mul(S.vel, sp0 * 0.98 / sp1); }   // a bounce never adds energy
         S.pos = add(S.pos, mul(Nn, pen + 0.002));
         if (S.omega) { const dw = dot(cross(rc, dv), nUp) * 2 / (DISC_R * DISC_R) * spinSign; S.omega = Math.max(0, S.omega + dw) * 0.85; }
         if (S.tilt) S.tilt = add(S.tilt, mul(cross(Nn, v3(0, 0, 1)), -vn * 0.3));   // a knock, not a flip: the gyro holds most of its attitude
