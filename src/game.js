@@ -226,6 +226,7 @@
     if (IN.tilt) { var p = local(list[list.length - 1]), n = clamp(IN.tiltBase + Math.round(-(p.y - IN.down.y) / 24), -3, 3), hz = clamp(IN.tiltBaseH + Math.round(-(p.x - IN.down.x) / 24), -3, 3); if (n !== G.nose || hz !== G.hyz) { G.nose = n; G.hyz = hz; showNose(); try { navigator.vibrate && navigator.vibrate(6); } catch (x) {} } return; }
     var l = IN.pts[IN.pts.length - 1];
     if (IN.hold && Math.hypot(l.x - IN.down.x, l.y - IN.down.y) >= 7) { clearTimeout(IN.hold); IN.hold = null; }
+    var py = clamp(l.y - IN.down.y, 0, 120); PULL.y = py; PULL.x = clamp((l.x - IN.down.x) * 0.5, -30, 30) * (py / 120); discPose(false);
     drawStroke();
   });
   function finish(e) {
@@ -247,7 +248,7 @@
       pickTarget(p); return;
     }
     if (e.pointerId !== IN.pid) return;
-    IN.pid = null; clearTimeout(IN.hold); IN.hold = null;
+    IN.pid = null; clearTimeout(IN.hold); IN.hold = null; releasePull();
     try { app.releasePointerCapture(e.pointerId); } catch (x) {}
     if (IN.tilt) {
       // a real flick out of a hold is a throw, not a nose change: put the nose back and throw it
@@ -278,9 +279,19 @@
   var HYZ_NAME = { 3: 'BIG HYZER', 2: 'HYZER', 1: 'TOUCH HYZER', 0: 'FLAT', '-1': 'TOUCH ANNY', '-2': 'ANHYZER', '-3': 'BIG ANNY' };
   var NOSE_NAME = { 3: 'NOSE UP 3', 2: 'NOSE UP 2', 1: 'NOSE UP 1', 0: 'LEVEL', '-1': 'NOSE DOWN 1', '-2': 'NOSE DOWN 2', '-3': 'NOSE DOWN 3' };
   function bankDeg(h) { return -(C.BANK[h] || 0); }            // screen tilt in degrees: hyzer = left side down
+  // the disc button rides your thumb as you load up: down with the pull back (up to ~120 px), a little side to
+  // side, glowing hotter the deeper you load; it springs home on release
+  var PULL = { x: 0, y: 0 };
+  function discPose(spring) {
+    var d = $('disc'), k = clamp(PULL.y / 120, 0, 1);
+    d.style.transition = spring ? 'transform 260ms cubic-bezier(.2,1.7,.4,1), box-shadow 200ms ease' : 'none';
+    d.style.setProperty('--load', k.toFixed(3));
+    d.style.transform = 'translate(' + PULL.x.toFixed(1) + 'px,' + PULL.y.toFixed(1) + 'px) rotate(' + (-bankDeg(G.hyz)).toFixed(1) + 'deg) scale(' + (1 + k * 0.06).toFixed(3) + ',' + ((1 - Math.abs(G.nose) * 0.08) * (1 - k * 0.1)).toFixed(3) + ')';
+  }
+  function releasePull() { if (PULL.x || PULL.y) { PULL.x = 0; PULL.y = 0; discPose(true); } }
   function showNose() {
     var d = $('disc'); d.style.setProperty('--noseY', (-G.nose * 4) + 'px');
-    d.style.transform = 'rotate(' + (-bankDeg(G.hyz)).toFixed(1) + 'deg) scaleY(' + (1 - Math.abs(G.nose) * 0.08) + ')';
+    discPose(true);
     showGauge(bankDeg(G.hyz), G.nose, HYZ_NAME[G.hyz], false); setHint();
   }
   function showGauge(tiltDeg, nose, label, released) {
