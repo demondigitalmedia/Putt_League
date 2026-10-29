@@ -80,14 +80,14 @@
   ];
 
   /* ---------- surfaces ---------- */
-  const FLOOR = { slideFriction: 0.28, skipRetention: 0.88, restitution: 1.0, grassDrag: 0, edgeGrab: 0.02, rollResistance: 0.012,
+  const FLOOR = { slideFriction: 0.42, skipRetention: 0.86, restitution: 1.0, grassDrag: 0, edgeGrab: 0.02, rollResistance: 0.02,
     sound: 'contact.wood', embed: 0, look: '#b87a45', label: 'Lacquered taproom floor' };
   // venue surfaces, fastest to slowest after a landing: glazed tile (for themes that call for it), lacquered
   // taproom wood (baseline), patio flagstone (~70% of the wood's slide), garden grass (~25%), gravel paths (~15%)
   const VENUE = {
-    tile: { slideFriction: 0.22, skipRetention: 0.9, restitution: 1.0, grassDrag: 0, edgeGrab: 0.01, rollResistance: 0.01, sound: 'contact.hard', embed: 0, look: '#d9d4c7', label: 'Glazed tile' },
-    lot_asphalt: { slideFriction: 0.36, skipRetention: 0.78, restitution: 0.65, grassDrag: 0, edgeGrab: 0.04, rollResistance: 0.02, sound: 'contact.hard', embed: 0, look: '#4a4a4f', label: 'Asphalt lot' },
-    patio_flagstone: { slideFriction: 0.46, skipRetention: 0.62, restitution: 0.55, grassDrag: 0, edgeGrab: 0.07, rollResistance: 0.035, sound: 'contact.rock', embed: 0, look: '#8f8a80', label: 'Patio flagstone' },
+    tile: { slideFriction: 0.33, skipRetention: 0.88, restitution: 1.0, grassDrag: 0, edgeGrab: 0.01, rollResistance: 0.015, sound: 'contact.hard', embed: 0, look: '#d9d4c7', label: 'Glazed tile' },
+    lot_asphalt: { slideFriction: 0.5, skipRetention: 0.72, restitution: 0.65, grassDrag: 0, edgeGrab: 0.04, rollResistance: 0.028, sound: 'contact.hard', embed: 0, look: '#4a4a4f', label: 'Asphalt lot' },
+    patio_flagstone: { slideFriction: 0.6, skipRetention: 0.58, restitution: 0.55, grassDrag: 0, edgeGrab: 0.07, rollResistance: 0.045, sound: 'contact.rock', embed: 0, look: '#8f8a80', label: 'Patio flagstone' },
     garden_grass: { slideFriction: 0.55, skipRetention: 0.65, restitution: 0.25, grassDrag: 1.2, edgeGrab: 0.12, rollResistance: 0.05, sound: 'contact.grass', embed: 0.1, look: '#6cc25a', label: 'Garden grass' },
     garden_gravel: { slideFriction: 1.0, skipRetention: 0.25, restitution: 0.15, grassDrag: 1.6, edgeGrab: 0.22, rollResistance: 0.2, sound: 'contact.gravel', embed: 0.02, look: '#9b958b', label: 'Gravel path' },
   };
@@ -190,7 +190,7 @@
   /* ---------- the throw: flick class -> release, and the aim solver ---------- */
   const RELEASE_H = 1.0, CHAIN_Z = 1.08;
   const BANK = { 3: -26, 2: -16, 1: -8, 0: 0, '-1': 8, '-2': 16, '-3': 26 };
-  function mphFor(d) { return d <= 12 ? 14.5 + d : 26.5 + 0.45 * (d - 12); }
+  function mphFor(d) { return d <= 12 ? 11 + 0.95 * d : 22.4 + 0.45 * (d - 12); }   // putts: a firm-but-dying pace, so a miss ends a few feet past, not across the room
   function baseParams(disc, cls) {
     return { disc: { speed: disc.speed, glide: disc.glide, turn: disc.turn, fade: disc.fade }, hand: 'RHBH', spin: 900,
       hyzer: BANK[cls] || 0, launchAngle: 6, nose: 4.5, releaseHeight: RELEASE_H / FT, groundEffect: 0.25 };

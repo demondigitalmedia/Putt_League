@@ -149,11 +149,20 @@
   function baseTarget(o) { return C.defaultTarget(G.hole, o) || basketPt(); }
   function solveFor(c, o, d) {
     var t = G.target;
-    if (t && t.air) {
+    // a spot out in the air away from the basket: thread it and come down at the basket. A spot ON or right around
+    // the basket is just "hit the basket there": the normal putt line at that height, sized for the basket
+    if (t && t.air && (distTo(t, hole().basket) > 2.5 || t.z > 2.5)) {
       var db = distTo(o, hole().basket), dp = distTo(o, t);
-      return C.solve(E.P, o, d, c, Object.assign({}, t, { carry: Math.max(db, dp * 1.2), land: Math.max(db, dp + 1.5) }), ceilingFor(o, t));
+      return C.solve(E.P, o, d, c, Object.assign({}, t, { carry: Math.max(db, dp * 1.2), land: Math.max(db, dp) + 0.3 }), ceilingFor(o, t));
     }
-    return C.solve(E.P, o, d, c, aimTarget(), ceilingFor(o));
+    var tt = t ? { x: t.x, y: t.y, z: t.z } : aimTarget();
+    // an approach (past putting range) to a spot in the air: come down THROUGH it at a dying pace, landing a step
+    // past, instead of a flat fast line that keeps gliding across the room when it misses
+    if (!(t && t.floor) && distTo(o, tt) > 13) {
+      var db2 = distTo(o, hole().basket), dp2 = distTo(o, tt);
+      return C.solve(E.P, o, d, c, Object.assign({}, tt, { z: tt.z != null ? tt.z : C.CHAIN_Z, air: true, carry: Math.max(db2, dp2), land: Math.max(db2, dp2) + 1.5 }), ceilingFor(o, tt));
+    }
+    return C.solve(E.P, o, d, c, t && t.air ? tt : aimTarget(), ceilingFor(o, tt));
   }
   // one solve: the clean flat line to (or through) the reticle. Your angle, nose and power bend it at the throw.
   function scheduleSolve() {
@@ -325,9 +334,20 @@
       var vis = true, q = o; while (q) { if (!q.visible) { vis = false; break; } q = q.parent; } if (!vis) continue;
       h = hits[i]; break;
     }
+    var o2 = origin(), bk = hole().basket;
+    if (h && inGroup(h.object, world.baskets[G.hole].group)) { setTarget({ x: bk.x, y: bk.y, z: C.CHAIN_Z, basket: true }); flashHint('TARGET: THE CHAINS'); return; }
+    // a tap that lands on something BEHIND the basket (the back wall, the gong, through the chains) means "about here,
+    // at the basket": the spot goes on an upright plane at the basket's distance, so the throw is sized for the basket,
+    // not for the wall 40 ft behind it. Taps on things in front of the basket (a kettle face, the floor) stay put.
+    var dir0 = dirFrom(o2, basketPt()), onP0 = SC.W(o2.x, o2.y, 0).addScaledVector(dir0, Math.max(1.5, distTo(o2, bk)));
+    plane.setFromNormalAndCoplanarPoint(dir0.clone().negate(), onP0);
+    var pHit = ray.ray.intersectPlane(plane, hitP) ? hitP.clone() : null, tPl = pHit ? camera.position.distanceTo(pHit) : Infinity;
+    if (pHit && pHit.y >= 0.02 && (!h || h.distance > tPl + 0.05)) {
+      var pz = Math.min(pHit.y, -pHit.z < C.ROOM.y1 ? 4.0 : 30);
+      setTarget({ x: pHit.x, y: -pHit.z, z: pz, floor: false, air: pz > 0.4 }); flashHint('TARGET SET'); return;
+    }
     if (!h) return;
-    var o2 = origin(), X = h.point.x, Y = -h.point.z, Z = h.point.y, bk = hole().basket;
-    if (inGroup(h.object, world.baskets[G.hole].group)) { setTarget({ x: bk.x, y: bk.y, z: C.CHAIN_Z, basket: true }); flashHint('TARGET: THE CHAINS'); return; }
+    var X = h.point.x, Y = -h.point.z, Z = h.point.y;
     var d = distTo({ x: X, y: Y }, o2);
     if (d < 1.0) { flashHint('PICK A SPOT FARTHER OUT'); return; }
     var onFloor = world.grounds.indexOf(h.object) >= 0 || Z < 0.05;
