@@ -98,8 +98,8 @@ button:focus-visible { outline: 3px solid var(--amber); outline-offset: 3px; }
 #disc::after { content: ""; position: absolute; left: 18px; right: 18px; top: 50%; height: 4px; margin-top: -2px; background: var(--ink); border-radius: 2px; transform: translateY(var(--noseY, 0px)); }
 #disc::before { content: ""; position: absolute; left: 22px; top: 12px; width: 26px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.75); transform: rotate(-12deg); }
 #discSel, #teeSel { }
-#discBtn { height: 34px; display: flex; align-items: center; gap: 6px; padding: 0 10px 0 6px; cursor: pointer; border-radius: 17px; font-family: var(--comic); font-size: 16px; letter-spacing: 0.06em; }
-#discBtn .sw { width: 20px; height: 20px; border-radius: 50%; border: 2.5px solid var(--ink); background: var(--amber); }
+#discBtn { width: 62px; height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 0; cursor: pointer; border-radius: 14px; font-family: var(--comic); font-size: 10px; letter-spacing: 0; overflow: hidden; }
+#discBtn .sw { width: 18px; height: 18px; border-radius: 50%; border: 2.5px solid var(--ink); background: var(--amber); }
 #teeBtn { height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 10px; cursor: pointer; border-radius: 12px; line-height: 1; }
 #teeBtn span { font-size: 11px; font-weight: 800; letter-spacing: 0.12em; color: #5b4231; }
 #teeBtn b { font-family: var(--comic); font-weight: 400; font-size: 18px; letter-spacing: 0.06em; }

@@ -63,18 +63,20 @@
     [inkc, fxc].forEach(function (c) { c.width = Math.round(W * dpr); c.height = Math.round(Hh * dpr); c.style.width = W + 'px'; c.style.height = Hh + 'px'; });
     ink.setTransform(dpr, 0, 0, dpr, 0, 0); fx.setTransform(dpr, 0, 0, dpr, 0, 0);
     var sb = parseFloat(getComputedStyle(document.documentElement).paddingBottom) || 0;
-    var R = 46, cx = W / 2, cy = Hh - sb - 140 - R;   // ~140 px of open screen under the disc for the pull back
+    var R = 46, cx = W / 2, cy = Hh - sb - 104;   // low on the screen: pulled all the way back, the disc sinks half out of frame
     var fanR = Math.max(120, Math.min((W / 2 - 8) / Math.sin(MAXA * Math.PI / 180), cy - 120));
-    L = { W: W, H: Hh, R: R, cx: cx, cy: cy, fanR: fanR, sb: sb };
+    L = { W: W, H: Hh, R: R, cx: cx, cy: cy, fanR: fanR, sb: sb, pullMax: Hh - cy };
     var dw = $('discWrap'); dw.style.left = (cx - R) + 'px'; dw.style.top = (cy - R) + 'px'; dw.style.width = dw.style.height = (R * 2) + 'px';
     var side = Math.max(12, W * 0.035);
-    $('viewWrap').style.left = side + 'px'; $('viewWrap').style.top = (cy + R - 62) + 'px';
-    $('discSel').style.left = side + 'px'; $('discSel').style.top = (cy + R - 62 - 46) + 'px';
-    $('powerWrap').style.right = side + 'px'; $('powerWrap').style.top = (cy + R - 196) + 'px';
-    $('teeSel').style.right = side + 'px'; $('teeSel').style.top = (cy + R - 196 - 54) + 'px';
-    $('hint').style.top = (Hh - sb - 30) + 'px';
+    // side controls sit right down in the bottom corners to leave the most view
+    var bot = Hh - sb - 12, pwH = $('powerWrap').offsetHeight || 200;
+    $('viewWrap').style.left = side + 'px'; $('viewWrap').style.top = (bot - 62) + 'px';
+    $('discSel').style.left = side + 'px'; $('discSel').style.top = (bot - 62 - 60) + 'px';
+    $('powerWrap').style.right = side + 'px'; $('powerWrap').style.top = (bot - pwH) + 'px';
+    $('teeSel').style.right = side + 'px'; $('teeSel').style.top = (bot - pwH - 54) + 'px';
+    $('hint').style.top = (Math.min(cy - R - 64, bot - pwH - 80)) + 'px';
     var gg = $('gauge'); gg.style.left = cx + 'px'; gg.style.top = (cy - R - 34) + 'px';
-    $('call').style.top = (cy - R - 84) + 'px';
+    $('call').style.top = (cy - R - 104) + 'px';
     $('tally').style.top = Math.round(Hh * 0.17) + 'px';
     drawFan();
   }
@@ -226,7 +228,7 @@
     if (IN.tilt) { var p = local(list[list.length - 1]), n = clamp(IN.tiltBase + Math.round(-(p.y - IN.down.y) / 24), -3, 3), hz = clamp(IN.tiltBaseH + Math.round(-(p.x - IN.down.x) / 24), -3, 3); if (n !== G.nose || hz !== G.hyz) { G.nose = n; G.hyz = hz; showNose(); try { navigator.vibrate && navigator.vibrate(6); } catch (x) {} } return; }
     var l = IN.pts[IN.pts.length - 1];
     if (IN.hold && Math.hypot(l.x - IN.down.x, l.y - IN.down.y) >= 7) { clearTimeout(IN.hold); IN.hold = null; }
-    var py = clamp(l.y - IN.down.y, 0, 120); PULL.y = py; PULL.x = clamp((l.x - IN.down.x) * 0.5, -30, 30) * (py / 120); discPose(false);
+    var pm = L.pullMax || 120, py = clamp(l.y - IN.down.y, 0, pm); PULL.y = py; PULL.x = clamp((l.x - IN.down.x) * 0.5, -30, 30) * (py / pm); discPose(false);
     drawStroke();
   });
   function finish(e) {
@@ -283,7 +285,7 @@
   // side, glowing hotter the deeper you load; it springs home on release
   var PULL = { x: 0, y: 0 };
   function discPose(spring) {
-    var d = $('disc'), k = clamp(PULL.y / 120, 0, 1);
+    var d = $('disc'), k = clamp(PULL.y / (L.pullMax || 120), 0, 1);
     d.style.transition = spring ? 'transform 260ms cubic-bezier(.2,1.7,.4,1), box-shadow 200ms ease' : 'none';
     d.style.setProperty('--load', k.toFixed(3));
     d.style.transform = 'translate(' + PULL.x.toFixed(1) + 'px,' + PULL.y.toFixed(1) + 'px) rotate(' + (-bankDeg(G.hyz)).toFixed(1) + 'deg) scale(' + (1 + k * 0.06).toFixed(3) + ',' + ((1 - Math.abs(G.nose) * 0.08) * (1 - k * 0.1)).toFixed(3) + ')';
