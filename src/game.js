@@ -225,7 +225,7 @@
     e.preventDefault();
     var list = e.getCoalescedEvents ? e.getCoalescedEvents() : [e]; if (!list.length) list = [e];
     for (var i = 0; i < list.length; i++) IN.pts.push(local(list[i]));
-    if (IN.tilt) { var p = local(list[list.length - 1]), n = clamp(IN.tiltBase + Math.round(-(p.y - IN.down.y) / 24), -3, 3), hz = clamp(IN.tiltBaseH + Math.round(-(p.x - IN.down.x) / 24), -3, 3); if (n !== G.nose || hz !== G.hyz) { G.nose = n; G.hyz = hz; showNose(); try { navigator.vibrate && navigator.vibrate(6); } catch (x) {} } return; }
+    if (IN.tilt) { var p = local(list[list.length - 1]), n = clamp(IN.tiltBase + Math.round((p.y - IN.down.y) / 24), -3, 3), hz = clamp(IN.tiltBaseH + Math.round(-(p.x - IN.down.x) / 24), -3, 3); if (n !== G.nose || hz !== G.hyz) { G.nose = n; G.hyz = hz; showNose(); try { navigator.vibrate && navigator.vibrate(6); } catch (x) {} } return; }
     var l = IN.pts[IN.pts.length - 1];
     if (IN.hold && Math.hypot(l.x - IN.down.x, l.y - IN.down.y) >= 7) { clearTimeout(IN.hold); IN.hold = null; }
     var pm = L.pullMax || 120, py = clamp(l.y - IN.down.y, 0, pm); PULL.y = py; PULL.x = clamp((l.x - IN.down.x) * 0.5, -30, 30) * (py / pm); discPose(false);
@@ -307,7 +307,7 @@
   function hyzLabel(deg) { var a = Math.abs(deg); return a < 4 ? 'FLAT' : (deg > 0 ? (a < 12 ? 'TOUCH HYZER' : a < 21 ? 'HYZER' : 'BIG HYZER') : (a < 12 ? 'TOUCH ANNY' : a < 21 ? 'ANHYZER' : 'BIG ANNY')) + ' ' + Math.round(a) + '°'; }
   function setHint() {
     var h = $('hint');
-    if (IN.tilt) h.textContent = 'SLIDE: LEFT HYZER · RIGHT ANNY · UP/DOWN NOSE';
+    if (IN.tilt) h.textContent = 'L/R: HYZER/ANNY · FWD: NOSE DOWN';
     else if (G.state === 'aim' && !G.target) h.textContent = 'TAP WHERE YOU WANT TO THROW';
     else h.textContent = 'FLICK TO THROW · HOLD DISC FOR ANGLE';
   }
@@ -630,7 +630,7 @@
     [{ id: 'silo', color: 0x8ed8ff, label: 'SILO SLAM', sub: 'BANK OFF THE SILO: +1500', p: function () { return [C.SILO.x, C.SILO.y, 5.5]; },
        shells: function () { var s = C.SILO, g = new T.CylinderGeometry(s.r, s.r, s.h, 28); return [[g, s.x, s.y, s.h / 2]]; } },
      { id: 'sacks', color: 0xffc93c, label: 'SACK BANK', sub: 'BANK IT IN: JACKPOT', p: function () { var b = C.HOLES[3].backstop; return [b.x, b.y, b.h + 0.5]; },
-       shells: function () { var b = C.HOLES[3].backstop; return [[box3(b.hx * 2, b.h, b.hy * 2), b.x, b.y, b.h / 2]]; } }],
+       shells: function () { var b = C.HOLES[3].backstop; return [[-0.55, 0], [0, 0], [0.55, 0], [-0.28, 0.5], [0.28, 0.5], [0, 1.0]].map(function (q) { var sg = new T.SphereGeometry(0.34, 12, 8); sg.scale(1.0, 0.75, 1.25); return [sg, b.x + q[0], b.y, 0.26 + q[1]]; }); } }],
     [{ id: 'under', color: 0x5fe0c8, label: 'UNDER THE TRUCK', sub: 'SKIP IT UNDER: +1000', p: function () { return [C.BOX_TRUCK.x, C.BOX_TRUCK.y, C.BOX_TRUCK.z1 + 0.5]; },
        shells: function () { var t = C.BOX_TRUCK; return [[box3(t.hx * 2 - 0.1, t.z0 - 0.05, t.hy * 2 - 0.1), t.x, t.y, t.z0 / 2]]; } },
      { id: 'pallets', color: 0xffc93c, label: 'PALLET BANK', sub: 'BANK IT IN: JACKPOT', p: function () { var b = C.HOLES[4].backstop; return [b.x, b.y, b.h + 0.5]; },
@@ -638,7 +638,7 @@
     [{ id: 'under6', color: 0x5fe0c8, label: 'UNDER THE TRUCK', sub: 'SKIP IT UNDER: +1000', p: function () { return [C.BOX_TRUCK.x, C.BOX_TRUCK.y, C.BOX_TRUCK.z1 + 0.5]; },
        shells: function () { var t = C.BOX_TRUCK; return [[box3(t.hx * 2 - 0.1, t.z0 - 0.05, t.hy * 2 - 0.1), t.x, t.y, t.z0 / 2]]; } },
      { id: 'dock', color: 0xffc93c, label: 'DOCK BANK', sub: 'BANK IT IN: JACKPOT', p: function () { var b = C.HOLES[5].backstop; return [b.x, b.y - b.hy, b.h + 0.6]; },
-       shells: function () { var b = C.HOLES[5].backstop; return [[box3(b.hx * 2, b.h, b.hy * 2), b.x, b.y, b.h / 2]]; } }]
+       shells: function () { var b = C.HOLES[5].backstop, bk = C.HOLES[5].basket; return [[box3(3.2, b.h, 0.3), bk.x, b.y - b.hy + 0.15, b.h / 2]]; } }]
   ];
   function skipSpot() { var o = origin(), b = hole().basket, d = distTo(o, b) || 1; return [b.x - (b.x - o.x) / d * 1.8, b.y - (b.y - o.y) / d * 1.8]; }
   var glows = [];
@@ -656,7 +656,7 @@
     var on = G.state === 'aim' || G.state === 'preview', pulse = 0.45 + 0.35 * Math.sin(t * 4.2);
     glows.forEach(function (g) {
       var show = on && (!g.b.when || g.b.when());
-      g.objs.forEach(function (o) { o.visible = show; if (show) { o.userData.mats[0].uniforms.a.value = pulse; o.userData.mats[1].uniforms.a.value = pulse * 0.35; o.userData.mats[0].uniforms.t.value = 0.05 + 0.04 * (0.5 + 0.5 * Math.sin(t * 4.2)); } });
+      g.objs.forEach(function (o) { o.visible = show; if (show) { o.userData.mats[0].uniforms.a.value = pulse; o.userData.mats[1].uniforms.a.value = pulse * 0.22; o.userData.mats[0].uniforms.t.value = 0.025 + 0.02 * (0.5 + 0.5 * Math.sin(t * 4.2)); } });
       if (g.b.floor) { skipRing.visible = show; if (show) { var sp = skipSpot(); skipRing.position.copy(SC.W(sp[0], sp[1], 0.02)); skipRing.material.opacity = pulse * 0.8; skipRing.scale.setScalar(1 + 0.15 * Math.sin(t * 4.2)); } }
     });
   }

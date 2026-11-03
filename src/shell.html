@@ -66,11 +66,11 @@ button:focus-visible { outline: 3px solid var(--amber); outline-offset: 3px; }
 #aimTag { position: absolute; z-index: 6; transform: translate(-50%, -50%); pointer-events: none; transition: filter 200ms ease; }
 #aimTag.live svg { animation: spin 2.2s linear infinite; filter: drop-shadow(0 0 6px #ffc93c) drop-shadow(0 0 14px #ffc93c); }
 #aimTag.live::after { content: "DRAG ANYWHERE"; position: absolute; left: 50%; top: 100%; transform: translateX(-50%); margin-top: 2px; white-space: nowrap; font-family: var(--comic); font-size: 15px; letter-spacing: 0.08em; color: var(--gold); text-shadow: 0 2px 0 var(--ink), 2px 0 0 var(--ink), -2px 0 0 var(--ink), 0 -2px 0 var(--ink); }
-.callout { position: absolute; z-index: 16; transform: translate(-50%, -100%) scale(0) rotate(var(--r, -3deg)); padding: 5px 12px 6px; text-align: center; white-space: nowrap; pointer-events: none;
-  box-shadow: 3px 3px 0 var(--ink), 0 0 22px 6px var(--gc, #ffc93c); transition: transform 260ms cubic-bezier(.2,1.6,.4,1), opacity 200ms ease; opacity: 0; }
+.callout { position: absolute; z-index: 16; transform: translate(-50%, -100%) scale(0) rotate(var(--r, -3deg)); padding: 3px 8px 4px; text-align: center; white-space: nowrap; pointer-events: none;
+  box-shadow: 2px 2px 0 var(--ink), 0 0 12px 3px var(--gc, #ffc93c); transition: transform 260ms cubic-bezier(.2,1.6,.4,1), opacity 200ms ease; opacity: 0; }
 .callout.in { transform: translate(-50%, -100%) scale(1) rotate(var(--r, -3deg)); opacity: 1; }
-.callout b { display: block; font-family: var(--comic); font-size: 24px; letter-spacing: 0.05em; color: var(--red); line-height: 1; }
-.callout span { display: block; font-size: 13px; font-weight: 800; letter-spacing: 0.06em; color: #5b4231; margin-top: 2px; }
+.callout b { display: block; font-family: var(--comic); font-size: 17px; letter-spacing: 0.05em; color: var(--red); line-height: 1; text-shadow: 1px 1px 0 #ffc93c; }
+.callout span { display: block; font-size: 10px; font-weight: 800; letter-spacing: 0.05em; color: #5b4231; margin-top: 1px; }
 .pin { position: absolute; z-index: 16; transform: translate(-50%, -100%) scale(0); transition: transform 380ms cubic-bezier(.2,1.6,.4,1); pointer-events: none; text-align: center; }
 .pin.in { transform: translate(-50%, -100%) scale(1); }
 .pin .num { width: 44px; height: 44px; margin: 0 auto; border-radius: 50%; background: var(--gc); border: 3px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); font-family: var(--comic); font-size: 28px; line-height: 39px; color: var(--ink); }
@@ -180,10 +180,10 @@ button:focus-visible { outline: 3px solid var(--amber); outline-offset: 3px; }
 #sheetBox .go { background: var(--amber); }
 #titleCard { position: absolute; z-index: 17; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: calc(80px + env(safe-area-inset-top, 0px)); pointer-events: auto; }
 #titleCard[hidden] { display: none !important; }
-#tcBox { text-align: center; padding: 10px 18px 12px; border-width: 4px; box-shadow: 6px 6px 0 var(--ink); width: min(320px, calc(100% - 32px)); animation: slam 600ms cubic-bezier(.2,1.5,.4,1) both; }
-#tcBox .k { font-family: var(--comic); font-size: 26px; letter-spacing: 0.1em; color: var(--copper); }
-#tcBox .big { font-family: var(--comic); font-size: clamp(34px, 11vw, 48px); line-height: 0.95; letter-spacing: 0.03em; color: var(--red); text-shadow: 3px 3px 0 var(--ink); -webkit-text-stroke: 1.2px var(--ink); }
-#tcBox .m { margin-top: 4px; font-size: 18px; font-weight: 800; letter-spacing: 0.1em; color: #3b2a1e; }
+#tcBox { text-align: center; padding: 7px 14px 9px; border-width: 3px; box-shadow: 4px 4px 0 var(--ink); width: min(250px, calc(100% - 48px)); animation: slam 600ms cubic-bezier(.2,1.5,.4,1) both; }
+#tcBox .k { font-family: var(--comic); font-size: 18px; letter-spacing: 0.1em; color: var(--copper); }
+#tcBox .big { font-family: var(--comic); font-size: clamp(26px, 8.5vw, 36px); line-height: 0.95; letter-spacing: 0.03em; color: var(--red); text-shadow: 3px 3px 0 var(--ink); -webkit-text-stroke: 1.2px var(--ink); }
+#tcBox .m { margin-top: 3px; font-size: 13px; font-weight: 800; letter-spacing: 0.1em; color: #3b2a1e; }
 #tcSkip { margin-top: 14px; font-family: var(--comic); font-size: 18px; letter-spacing: 0.1em; color: var(--paper); text-shadow: 0 2px 0 var(--ink), 2px 0 0 var(--ink), -2px 0 0 var(--ink), 0 -2px 0 var(--ink); animation: blinky 1s steps(2) infinite; }
 @keyframes blinky { 50% { opacity: 0.35; } }
 #wheel { position: absolute; z-index: 18; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; background: rgba(18,12,8,0.35); }

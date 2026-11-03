@@ -66,11 +66,11 @@ button:focus-visible { outline: 3px solid var(--amber); outline-offset: 3px; }
 #aimTag { position: absolute; z-index: 6; transform: translate(-50%, -50%); pointer-events: none; transition: filter 200ms ease; }
 #aimTag.live svg { animation: spin 2.2s linear infinite; filter: drop-shadow(0 0 6px #ffc93c) drop-shadow(0 0 14px #ffc93c); }
 #aimTag.live::after { content: "DRAG ANYWHERE"; position: absolute; left: 50%; top: 100%; transform: translateX(-50%); margin-top: 2px; white-space: nowrap; font-family: var(--comic); font-size: 15px; letter-spacing: 0.08em; color: var(--gold); text-shadow: 0 2px 0 var(--ink), 2px 0 0 var(--ink), -2px 0 0 var(--ink), 0 -2px 0 var(--ink); }
-.callout { position: absolute; z-index: 16; transform: translate(-50%, -100%) scale(0) rotate(var(--r, -3deg)); padding: 5px 12px 6px; text-align: center; white-space: nowrap; pointer-events: none;
-  box-shadow: 3px 3px 0 var(--ink), 0 0 22px 6px var(--gc, #ffc93c); transition: transform 260ms cubic-bezier(.2,1.6,.4,1), opacity 200ms ease; opacity: 0; }
+.callout { position: absolute; z-index: 16; transform: translate(-50%, -100%) scale(0) rotate(var(--r, -3deg)); padding: 3px 8px 4px; text-align: center; white-space: nowrap; pointer-events: none;
+  box-shadow: 2px 2px 0 var(--ink), 0 0 12px 3px var(--gc, #ffc93c); transition: transform 260ms cubic-bezier(.2,1.6,.4,1), opacity 200ms ease; opacity: 0; }
 .callout.in { transform: translate(-50%, -100%) scale(1) rotate(var(--r, -3deg)); opacity: 1; }
-.callout b { display: block; font-family: var(--comic); font-size: 24px; letter-spacing: 0.05em; color: var(--red); line-height: 1; }
-.callout span { display: block; font-size: 13px; font-weight: 800; letter-spacing: 0.06em; color: #5b4231; margin-top: 2px; }
+.callout b { display: block; font-family: var(--comic); font-size: 17px; letter-spacing: 0.05em; color: var(--red); line-height: 1; text-shadow: 1px 1px 0 #ffc93c; }
+.callout span { display: block; font-size: 10px; font-weight: 800; letter-spacing: 0.05em; color: #5b4231; margin-top: 1px; }
 .pin { position: absolute; z-index: 16; transform: translate(-50%, -100%) scale(0); transition: transform 380ms cubic-bezier(.2,1.6,.4,1); pointer-events: none; text-align: center; }
 .pin.in { transform: translate(-50%, -100%) scale(1); }
 .pin .num { width: 44px; height: 44px; margin: 0 auto; border-radius: 50%; background: var(--gc); border: 3px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); font-family: var(--comic); font-size: 28px; line-height: 39px; color: var(--ink); }
@@ -180,10 +180,10 @@ button:focus-visible { outline: 3px solid var(--amber); outline-offset: 3px; }
 #sheetBox .go { background: var(--amber); }
 #titleCard { position: absolute; z-index: 17; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: calc(80px + env(safe-area-inset-top, 0px)); pointer-events: auto; }
 #titleCard[hidden] { display: none !important; }
-#tcBox { text-align: center; padding: 10px 18px 12px; border-width: 4px; box-shadow: 6px 6px 0 var(--ink); width: min(320px, calc(100% - 32px)); animation: slam 600ms cubic-bezier(.2,1.5,.4,1) both; }
-#tcBox .k { font-family: var(--comic); font-size: 26px; letter-spacing: 0.1em; color: var(--copper); }
-#tcBox .big { font-family: var(--comic); font-size: clamp(34px, 11vw, 48px); line-height: 0.95; letter-spacing: 0.03em; color: var(--red); text-shadow: 3px 3px 0 var(--ink); -webkit-text-stroke: 1.2px var(--ink); }
-#tcBox .m { margin-top: 4px; font-size: 18px; font-weight: 800; letter-spacing: 0.1em; color: #3b2a1e; }
+#tcBox { text-align: center; padding: 7px 14px 9px; border-width: 3px; box-shadow: 4px 4px 0 var(--ink); width: min(250px, calc(100% - 48px)); animation: slam 600ms cubic-bezier(.2,1.5,.4,1) both; }
+#tcBox .k { font-family: var(--comic); font-size: 18px; letter-spacing: 0.1em; color: var(--copper); }
+#tcBox .big { font-family: var(--comic); font-size: clamp(26px, 8.5vw, 36px); line-height: 0.95; letter-spacing: 0.03em; color: var(--red); text-shadow: 3px 3px 0 var(--ink); -webkit-text-stroke: 1.2px var(--ink); }
+#tcBox .m { margin-top: 3px; font-size: 13px; font-weight: 800; letter-spacing: 0.1em; color: #3b2a1e; }
 #tcSkip { margin-top: 14px; font-family: var(--comic); font-size: 18px; letter-spacing: 0.1em; color: var(--paper); text-shadow: 0 2px 0 var(--ink), 2px 0 0 var(--ink), -2px 0 0 var(--ink), 0 -2px 0 var(--ink); animation: blinky 1s steps(2) infinite; }
 @keyframes blinky { 50% { opacity: 0.35; } }
 #wheel { position: absolute; z-index: 18; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; background: rgba(18,12,8,0.35); }
@@ -2599,6 +2599,18 @@ var VenueScene = (function () {
     var m = emissive ? new T.MeshBasicMaterial({ map: tex, transparent: true }) : new T.MeshToonMaterial({ map: tex, gradientMap: grad, transparent: true });
     return new T.Mesh(new T.PlaneGeometry(w, h), m);
   }
+  // a bank-board sign: small, lit (so it pops in any light), colored rim, text sized to fit so nothing clips
+  function signBoard(text, w, h, rim, sub) {
+    return paintPanel(w, h, 512, function (g, cw, ch) {
+      var r = ch * 0.22; g.fillStyle = rim || '#ffc93c'; roundRect(g, 0, 0, cw, ch, r); g.fill();
+      g.fillStyle = '#1d130c'; roundRect(g, ch * 0.07, ch * 0.07, cw - ch * 0.14, ch - ch * 0.14, r * 0.7); g.fill();
+      var fs = ch * (sub ? 0.46 : 0.6), fam = '"Bangers", Impact, "Arial Black", sans-serif';
+      g.font = '900 ' + fs + 'px ' + fam; var tw = g.measureText(text).width, maxW = cw * 0.86; if (tw > maxW) fs *= maxW / tw;
+      label(g, text, cw / 2, sub ? ch * 0.4 : ch * 0.53, fs, '#ffc93c', { stroke: Math.max(3, fs * 0.12), glow: 'rgba(255,201,60,0.55)', glowBlur: fs * 0.35 });
+      if (sub) { var f2 = ch * 0.2; g.font = '900 ' + f2 + 'px ' + fam; var t2 = g.measureText(sub).width; if (t2 > maxW) f2 *= maxW / t2; label(g, sub, cw / 2, ch * 0.76, f2, '#fff3df', {}); }
+    }, true);
+  }
+  function roundRect(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
   function label(g, text, x, y, size, fill, opts) {
     opts = opts || {};
     g.font = (opts.weight || '900') + ' ' + size + 'px ' + (opts.font || '"Bangers", Impact, "Arial Black", sans-serif');
@@ -2793,16 +2805,16 @@ var VenueScene = (function () {
         }
       } else if (b.kind === 'crates') {
         for (var cr = 0; cr < 4; cr++) { var col = [0xc0392b, 0x2E9C9A, 0xF2A13B, 0x3B86D9][cr]; stat.add(GBOX, toon(col), mBox(b.x + (cr % 2 ? 0.45 : -0.45), b.y, Math.floor(cr / 2) * 0.9, 0.86, b.hy * 2, 0.86), 0.02); }
-        var sign = paintPanel(1.6, 0.5, 256, function (g, w, h) { g.fillStyle = '#1d130c'; g.fillRect(0, 0, w, h); label(g, 'CRATE BANK', w / 2, h / 2, 50, '#ffc93c', {}); }); sign.position.copy(W(b.x, b.y - b.hy - 0.02, b.h + 0.3)); scene.add(sign);
+        var sign = signBoard('CRATE BANK', 1.15, 0.34); sign.position.copy(W(b.x, b.y - b.hy - 0.02, b.h + 0.3)); scene.add(sign);
       } else if (b.kind === 'sacks') {
         // grain sacks: a stacked pyramid of fat burlap bags
         var sackM = toon(0xd9c08a);
         [[-0.55, 0, 0], [0, 0, 0], [0.55, 0, 0], [-0.28, 0, 0.5], [0.28, 0, 0.5], [0, 0, 1.0]].forEach(function (q) { var sk = new T.Mesh(new T.SphereGeometry(0.34, 12, 8), sackM); sk.scale.set(1.0, 0.75, 1.25); sk.position.copy(W(b.x + q[0], b.y, 0.26 + q[2])); outline(sk, 0.015); scene.add(sk); });
-        var sgn = paintPanel(1.6, 0.45, 256, function (g, w, h) { g.fillStyle = '#1d130c'; g.fillRect(0, 0, w, h); label(g, 'SACK BANK', w / 2, h / 2, 40, '#ffc93c', {}); }); sgn.position.copy(W(b.x, b.y - b.hy - 0.05, b.h + 0.2)); scene.add(sgn);
+        var sgn = signBoard('SACK BANK', 1.1, 0.32); sgn.position.copy(W(b.x, b.y - b.hy - 0.05, b.h + 0.2)); scene.add(sgn);
       } else if (b.kind === 'pallets') {
         var palM = toon(0xb98a52), palD = toon(0x7a5530);
         for (var pr = 0; pr < 9; pr++) { stat.add(GBOX, pr % 3 === 2 ? palD : palM, mBox(b.x, b.y, pr * 0.19, b.hx * 2, b.hy * 2, 0.15), 0.012); }
-        var sgp = paintPanel(1.6, 0.45, 256, function (g, w, h) { g.fillStyle = '#1d130c'; g.fillRect(0, 0, w, h); label(g, 'PALLET BANK', w / 2, h / 2, 34, '#ffc93c', {}); }); sgp.rotation.y = Math.PI / 2; sgp.position.copy(W(b.x + b.hx + 0.05, b.y, b.h + 0.2)); scene.add(sgp);
+        var sgp = signBoard('PALLET BANK', 1.2, 0.32); sgp.rotation.y = Math.PI / 2; sgp.position.copy(W(b.x + b.hx + 0.05, b.y, b.h + 0.2)); scene.add(sgp);
       }
       // the Putt tee mats and the Pitch tee pad
       [['short', 'SHORT', 0x2f6b3a], ['long', 'LONG', 0x2f6b3a], ['tee', 'TEE ' + h.n, 0xa8402a]].forEach(function (t) {
@@ -2924,8 +2936,9 @@ var VenueScene = (function () {
     });
     for (var fx = G.x0; fx <= G.x1; fx += 4) if (fx < GT.x0 || fx > GT.x1) stat.add(GBOX, dark, mBox(fx, G.y1, 0, 0.14, 0.14, 2.0), 0.01);
     [GT.x0, GT.x1].forEach(function (gx) { stat.add(GBOX, dark, mBox(gx, G.y1, 0, 0.22, 0.22, 2.6), 0.012); });
-    var gsign = paintPanel(GT.x1 - GT.x0, 0.6, 512, function (g, w, h) { g.fillStyle = '#1d130c'; g.fillRect(0, 0, w, h); label(g, 'BACK LOT  ·  HOLES 4-6', w / 2, h / 2, 54, '#ffc93c', {}); });
-    gsign.position.copy(W((GT.x0 + GT.x1) / 2, G.y1, 2.45)); gsign.material.side = T.DoubleSide; scene.add(gsign);
+    var gsign = signBoard('BACK LOT', 3.2, 0.62, '#9ef01a', 'HOLES 4 · 5 · 6');
+    stat.add(GBOX, dark, mBox((GT.x0 + GT.x1) / 2, G.y1, 2.62, GT.x1 - GT.x0 + 0.2, 0.14, 0.12), 0.01);
+    gsign.position.copy(W((GT.x0 + GT.x1) / 2, G.y1, 2.25)); gsign.material.side = T.DoubleSide; scene.add(gsign);
     for (var fy = G.y0; fy <= G.y1; fy += 4) { stat.add(GBOX, dark, mBox(G.x0, fy, 0, 0.14, 0.14, 2.0), 0.01); stat.add(GBOX, dark, mBox(G.x1, fy, 0, 0.14, 0.14, 2.0), 0.01); }
     // trees beyond the fence (silhouettes)
     for (var t = 0; t < 22; t++) { var tx = -30 + t * 3 + (t % 3), ty = C.LOT.y1 + 7 + (t % 4) * 2.5, s = 3 + (t % 3); var tr = new T.Mesh(new T.SphereGeometry(s, 10, 8), toon(0x1f3a1a)); tr.position.copy(W(tx, ty, s + 2)); scene.add(tr); }
@@ -3004,9 +3017,9 @@ var VenueScene = (function () {
       var door = paintPanel(3.6, 3.6, 256, function (g, w, h) { g.fillStyle = '#c9c4b8'; g.fillRect(0, 0, w, h); g.fillStyle = '#9d988d'; for (var k = 0; k < 16; k++) g.fillRect(0, k * h / 16, w, 4); g.fillStyle = '#e0482f'; g.fillRect(0, h - 18, w, 18); });
       door.position.copy(W(dx2, Lt.y1 - 0.02, D.h + 1.8)); scene.add(door);
     });
-    var wsign = paintPanel(9, 1.1, 1024, function (g, w, h) { g.fillStyle = '#1d130c'; g.fillRect(0, 0, w, h); label(g, 'PUTT LEAGUE BREWING · KEG WAREHOUSE', w / 2, h / 2, 64, '#ffc93c', { stroke: 6 }); }, true);
+    var wsign = signBoard('PUTT LEAGUE BREWING', 5.6, 0.9, '#E0482F', 'KEG WAREHOUSE');
     wsign.position.copy(W(-3, Lt.y1 - 0.03, 4.6)); scene.add(wsign);
-    var dsign = paintPanel(2.4, 0.5, 256, function (g, w, h) { g.fillStyle = '#1d130c'; g.fillRect(0, 0, w, h); label(g, 'DOCK BANK', w / 2, h / 2, 50, '#ffc93c', {}); });
+    var dsign = signBoard('DOCK BANK', 1.4, 0.36);
     dsign.position.copy(W(D.x, D.y - D.hy - 0.03, D.h + 0.35)); scene.add(dsign);
     // grain silo: ribbed steel, cone roof, ladder
     var Si = C.SILO, silo = new T.Mesh(cylGeom(Si.r, Si.h, 28), toon(0xc7ccd1)); silo.position.copy(W(Si.x, Si.y, 0)); outline(silo, 0.035); scene.add(silo);
@@ -3060,7 +3073,7 @@ var VenueScene = (function () {
   function glowShell(geom, color) {
     var g = geom.clone(); smoothNormals(g);
     var grp = new T.Group();
-    var halo = new T.Mesh(g, glowMat(color, 0.07, true)), tint = new T.Mesh(g, glowMat(color, 0.012, false));
+    var halo = new T.Mesh(g, glowMat(color, 0.035, true)), tint = new T.Mesh(g, glowMat(color, 0.006, false));
     halo.renderOrder = 3; tint.renderOrder = 3; grp.add(halo); grp.add(tint);
     grp.userData.mats = [halo.material, tint.material];
     return grp;
@@ -3301,7 +3314,7 @@ var VenueScene = (function () {
     e.preventDefault();
     var list = e.getCoalescedEvents ? e.getCoalescedEvents() : [e]; if (!list.length) list = [e];
     for (var i = 0; i < list.length; i++) IN.pts.push(local(list[i]));
-    if (IN.tilt) { var p = local(list[list.length - 1]), n = clamp(IN.tiltBase + Math.round(-(p.y - IN.down.y) / 24), -3, 3), hz = clamp(IN.tiltBaseH + Math.round(-(p.x - IN.down.x) / 24), -3, 3); if (n !== G.nose || hz !== G.hyz) { G.nose = n; G.hyz = hz; showNose(); try { navigator.vibrate && navigator.vibrate(6); } catch (x) {} } return; }
+    if (IN.tilt) { var p = local(list[list.length - 1]), n = clamp(IN.tiltBase + Math.round((p.y - IN.down.y) / 24), -3, 3), hz = clamp(IN.tiltBaseH + Math.round(-(p.x - IN.down.x) / 24), -3, 3); if (n !== G.nose || hz !== G.hyz) { G.nose = n; G.hyz = hz; showNose(); try { navigator.vibrate && navigator.vibrate(6); } catch (x) {} } return; }
     var l = IN.pts[IN.pts.length - 1];
     if (IN.hold && Math.hypot(l.x - IN.down.x, l.y - IN.down.y) >= 7) { clearTimeout(IN.hold); IN.hold = null; }
     var pm = L.pullMax || 120, py = clamp(l.y - IN.down.y, 0, pm); PULL.y = py; PULL.x = clamp((l.x - IN.down.x) * 0.5, -30, 30) * (py / pm); discPose(false);
@@ -3383,7 +3396,7 @@ var VenueScene = (function () {
   function hyzLabel(deg) { var a = Math.abs(deg); return a < 4 ? 'FLAT' : (deg > 0 ? (a < 12 ? 'TOUCH HYZER' : a < 21 ? 'HYZER' : 'BIG HYZER') : (a < 12 ? 'TOUCH ANNY' : a < 21 ? 'ANHYZER' : 'BIG ANNY')) + ' ' + Math.round(a) + '°'; }
   function setHint() {
     var h = $('hint');
-    if (IN.tilt) h.textContent = 'SLIDE: LEFT HYZER · RIGHT ANNY · UP/DOWN NOSE';
+    if (IN.tilt) h.textContent = 'L/R: HYZER/ANNY · FWD: NOSE DOWN';
     else if (G.state === 'aim' && !G.target) h.textContent = 'TAP WHERE YOU WANT TO THROW';
     else h.textContent = 'FLICK TO THROW · HOLD DISC FOR ANGLE';
   }
@@ -3706,7 +3719,7 @@ var VenueScene = (function () {
     [{ id: 'silo', color: 0x8ed8ff, label: 'SILO SLAM', sub: 'BANK OFF THE SILO: +1500', p: function () { return [C.SILO.x, C.SILO.y, 5.5]; },
        shells: function () { var s = C.SILO, g = new T.CylinderGeometry(s.r, s.r, s.h, 28); return [[g, s.x, s.y, s.h / 2]]; } },
      { id: 'sacks', color: 0xffc93c, label: 'SACK BANK', sub: 'BANK IT IN: JACKPOT', p: function () { var b = C.HOLES[3].backstop; return [b.x, b.y, b.h + 0.5]; },
-       shells: function () { var b = C.HOLES[3].backstop; return [[box3(b.hx * 2, b.h, b.hy * 2), b.x, b.y, b.h / 2]]; } }],
+       shells: function () { var b = C.HOLES[3].backstop; return [[-0.55, 0], [0, 0], [0.55, 0], [-0.28, 0.5], [0.28, 0.5], [0, 1.0]].map(function (q) { var sg = new T.SphereGeometry(0.34, 12, 8); sg.scale(1.0, 0.75, 1.25); return [sg, b.x + q[0], b.y, 0.26 + q[1]]; }); } }],
     [{ id: 'under', color: 0x5fe0c8, label: 'UNDER THE TRUCK', sub: 'SKIP IT UNDER: +1000', p: function () { return [C.BOX_TRUCK.x, C.BOX_TRUCK.y, C.BOX_TRUCK.z1 + 0.5]; },
        shells: function () { var t = C.BOX_TRUCK; return [[box3(t.hx * 2 - 0.1, t.z0 - 0.05, t.hy * 2 - 0.1), t.x, t.y, t.z0 / 2]]; } },
      { id: 'pallets', color: 0xffc93c, label: 'PALLET BANK', sub: 'BANK IT IN: JACKPOT', p: function () { var b = C.HOLES[4].backstop; return [b.x, b.y, b.h + 0.5]; },
@@ -3714,7 +3727,7 @@ var VenueScene = (function () {
     [{ id: 'under6', color: 0x5fe0c8, label: 'UNDER THE TRUCK', sub: 'SKIP IT UNDER: +1000', p: function () { return [C.BOX_TRUCK.x, C.BOX_TRUCK.y, C.BOX_TRUCK.z1 + 0.5]; },
        shells: function () { var t = C.BOX_TRUCK; return [[box3(t.hx * 2 - 0.1, t.z0 - 0.05, t.hy * 2 - 0.1), t.x, t.y, t.z0 / 2]]; } },
      { id: 'dock', color: 0xffc93c, label: 'DOCK BANK', sub: 'BANK IT IN: JACKPOT', p: function () { var b = C.HOLES[5].backstop; return [b.x, b.y - b.hy, b.h + 0.6]; },
-       shells: function () { var b = C.HOLES[5].backstop; return [[box3(b.hx * 2, b.h, b.hy * 2), b.x, b.y, b.h / 2]]; } }]
+       shells: function () { var b = C.HOLES[5].backstop, bk = C.HOLES[5].basket; return [[box3(3.2, b.h, 0.3), bk.x, b.y - b.hy + 0.15, b.h / 2]]; } }]
   ];
   function skipSpot() { var o = origin(), b = hole().basket, d = distTo(o, b) || 1; return [b.x - (b.x - o.x) / d * 1.8, b.y - (b.y - o.y) / d * 1.8]; }
   var glows = [];
@@ -3732,7 +3745,7 @@ var VenueScene = (function () {
     var on = G.state === 'aim' || G.state === 'preview', pulse = 0.45 + 0.35 * Math.sin(t * 4.2);
     glows.forEach(function (g) {
       var show = on && (!g.b.when || g.b.when());
-      g.objs.forEach(function (o) { o.visible = show; if (show) { o.userData.mats[0].uniforms.a.value = pulse; o.userData.mats[1].uniforms.a.value = pulse * 0.35; o.userData.mats[0].uniforms.t.value = 0.05 + 0.04 * (0.5 + 0.5 * Math.sin(t * 4.2)); } });
+      g.objs.forEach(function (o) { o.visible = show; if (show) { o.userData.mats[0].uniforms.a.value = pulse; o.userData.mats[1].uniforms.a.value = pulse * 0.22; o.userData.mats[0].uniforms.t.value = 0.025 + 0.02 * (0.5 + 0.5 * Math.sin(t * 4.2)); } });
       if (g.b.floor) { skipRing.visible = show; if (show) { var sp = skipSpot(); skipRing.position.copy(SC.W(sp[0], sp[1], 0.02)); skipRing.material.opacity = pulse * 0.8; skipRing.scale.setScalar(1 + 0.15 * Math.sin(t * 4.2)); } }
     });
   }

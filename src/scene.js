@@ -127,6 +127,18 @@ var VenueScene = (function () {
     var m = emissive ? new T.MeshBasicMaterial({ map: tex, transparent: true }) : new T.MeshToonMaterial({ map: tex, gradientMap: grad, transparent: true });
     return new T.Mesh(new T.PlaneGeometry(w, h), m);
   }
+  // a bank-board sign: small, lit (so it pops in any light), colored rim, text sized to fit so nothing clips
+  function signBoard(text, w, h, rim, sub) {
+    return paintPanel(w, h, 512, function (g, cw, ch) {
+      var r = ch * 0.22; g.fillStyle = rim || '#ffc93c'; roundRect(g, 0, 0, cw, ch, r); g.fill();
+      g.fillStyle = '#1d130c'; roundRect(g, ch * 0.07, ch * 0.07, cw - ch * 0.14, ch - ch * 0.14, r * 0.7); g.fill();
+      var fs = ch * (sub ? 0.46 : 0.6), fam = '"Bangers", Impact, "Arial Black", sans-serif';
+      g.font = '900 ' + fs + 'px ' + fam; var tw = g.measureText(text).width, maxW = cw * 0.86; if (tw > maxW) fs *= maxW / tw;
+      label(g, text, cw / 2, sub ? ch * 0.4 : ch * 0.53, fs, '#ffc93c', { stroke: Math.max(3, fs * 0.12), glow: 'rgba(255,201,60,0.55)', glowBlur: fs * 0.35 });
+      if (sub) { var f2 = ch * 0.2; g.font = '900 ' + f2 + 'px ' + fam; var t2 = g.measureText(sub).width; if (t2 > maxW) f2 *= maxW / t2; label(g, sub, cw / 2, ch * 0.76, f2, '#fff3df', {}); }
+    }, true);
+  }
+  function roundRect(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
   function label(g, text, x, y, size, fill, opts) {
     opts = opts || {};
     g.font = (opts.weight || '900') + ' ' + size + 'px ' + (opts.font || '"Bangers", Impact, "Arial Black", sans-serif');
@@ -321,16 +333,16 @@ var VenueScene = (function () {
         }
       } else if (b.kind === 'crates') {
         for (var cr = 0; cr < 4; cr++) { var col = [0xc0392b, 0x2E9C9A, 0xF2A13B, 0x3B86D9][cr]; stat.add(GBOX, toon(col), mBox(b.x + (cr % 2 ? 0.45 : -0.45), b.y, Math.floor(cr / 2) * 0.9, 0.86, b.hy * 2, 0.86), 0.02); }
-        var sign = paintPanel(1.6, 0.5, 256, function (g, w, h) { g.fillStyle = '#1d130c'; g.fillRect(0, 0, w, h); label(g, 'CRATE BANK', w / 2, h / 2, 50, '#ffc93c', {}); }); sign.position.copy(W(b.x, b.y - b.hy - 0.02, b.h + 0.3)); scene.add(sign);
+        var sign = signBoard('CRATE BANK', 1.15, 0.34); sign.position.copy(W(b.x, b.y - b.hy - 0.02, b.h + 0.3)); scene.add(sign);
       } else if (b.kind === 'sacks') {
         // grain sacks: a stacked pyramid of fat burlap bags
         var sackM = toon(0xd9c08a);
         [[-0.55, 0, 0], [0, 0, 0], [0.55, 0, 0], [-0.28, 0, 0.5], [0.28, 0, 0.5], [0, 0, 1.0]].forEach(function (q) { var sk = new T.Mesh(new T.SphereGeometry(0.34, 12, 8), sackM); sk.scale.set(1.0, 0.75, 1.25); sk.position.copy(W(b.x + q[0], b.y, 0.26 + q[2])); outline(sk, 0.015); scene.add(sk); });
-        var sgn = paintPanel(1.6, 0.45, 256, function (g, w, h) { g.fillStyle = '#1d130c'; g.fillRect(0, 0, w, h); label(g, 'SACK BANK', w / 2, h / 2, 40, '#ffc93c', {}); }); sgn.position.copy(W(b.x, b.y - b.hy - 0.05, b.h + 0.2)); scene.add(sgn);
+        var sgn = signBoard('SACK BANK', 1.1, 0.32); sgn.position.copy(W(b.x, b.y - b.hy - 0.05, b.h + 0.2)); scene.add(sgn);
       } else if (b.kind === 'pallets') {
         var palM = toon(0xb98a52), palD = toon(0x7a5530);
         for (var pr = 0; pr < 9; pr++) { stat.add(GBOX, pr % 3 === 2 ? palD : palM, mBox(b.x, b.y, pr * 0.19, b.hx * 2, b.hy * 2, 0.15), 0.012); }
-        var sgp = paintPanel(1.6, 0.45, 256, function (g, w, h) { g.fillStyle = '#1d130c'; g.fillRect(0, 0, w, h); label(g, 'PALLET BANK', w / 2, h / 2, 34, '#ffc93c', {}); }); sgp.rotation.y = Math.PI / 2; sgp.position.copy(W(b.x + b.hx + 0.05, b.y, b.h + 0.2)); scene.add(sgp);
+        var sgp = signBoard('PALLET BANK', 1.2, 0.32); sgp.rotation.y = Math.PI / 2; sgp.position.copy(W(b.x + b.hx + 0.05, b.y, b.h + 0.2)); scene.add(sgp);
       }
       // the Putt tee mats and the Pitch tee pad
       [['short', 'SHORT', 0x2f6b3a], ['long', 'LONG', 0x2f6b3a], ['tee', 'TEE ' + h.n, 0xa8402a]].forEach(function (t) {
@@ -452,8 +464,9 @@ var VenueScene = (function () {
     });
     for (var fx = G.x0; fx <= G.x1; fx += 4) if (fx < GT.x0 || fx > GT.x1) stat.add(GBOX, dark, mBox(fx, G.y1, 0, 0.14, 0.14, 2.0), 0.01);
     [GT.x0, GT.x1].forEach(function (gx) { stat.add(GBOX, dark, mBox(gx, G.y1, 0, 0.22, 0.22, 2.6), 0.012); });
-    var gsign = paintPanel(GT.x1 - GT.x0, 0.6, 512, function (g, w, h) { g.fillStyle = '#1d130c'; g.fillRect(0, 0, w, h); label(g, 'BACK LOT  ·  HOLES 4-6', w / 2, h / 2, 54, '#ffc93c', {}); });
-    gsign.position.copy(W((GT.x0 + GT.x1) / 2, G.y1, 2.45)); gsign.material.side = T.DoubleSide; scene.add(gsign);
+    var gsign = signBoard('BACK LOT', 3.2, 0.62, '#9ef01a', 'HOLES 4 · 5 · 6');
+    stat.add(GBOX, dark, mBox((GT.x0 + GT.x1) / 2, G.y1, 2.62, GT.x1 - GT.x0 + 0.2, 0.14, 0.12), 0.01);
+    gsign.position.copy(W((GT.x0 + GT.x1) / 2, G.y1, 2.25)); gsign.material.side = T.DoubleSide; scene.add(gsign);
     for (var fy = G.y0; fy <= G.y1; fy += 4) { stat.add(GBOX, dark, mBox(G.x0, fy, 0, 0.14, 0.14, 2.0), 0.01); stat.add(GBOX, dark, mBox(G.x1, fy, 0, 0.14, 0.14, 2.0), 0.01); }
     // trees beyond the fence (silhouettes)
     for (var t = 0; t < 22; t++) { var tx = -30 + t * 3 + (t % 3), ty = C.LOT.y1 + 7 + (t % 4) * 2.5, s = 3 + (t % 3); var tr = new T.Mesh(new T.SphereGeometry(s, 10, 8), toon(0x1f3a1a)); tr.position.copy(W(tx, ty, s + 2)); scene.add(tr); }
@@ -532,9 +545,9 @@ var VenueScene = (function () {
       var door = paintPanel(3.6, 3.6, 256, function (g, w, h) { g.fillStyle = '#c9c4b8'; g.fillRect(0, 0, w, h); g.fillStyle = '#9d988d'; for (var k = 0; k < 16; k++) g.fillRect(0, k * h / 16, w, 4); g.fillStyle = '#e0482f'; g.fillRect(0, h - 18, w, 18); });
       door.position.copy(W(dx2, Lt.y1 - 0.02, D.h + 1.8)); scene.add(door);
     });
-    var wsign = paintPanel(9, 1.1, 1024, function (g, w, h) { g.fillStyle = '#1d130c'; g.fillRect(0, 0, w, h); label(g, 'PUTT LEAGUE BREWING · KEG WAREHOUSE', w / 2, h / 2, 64, '#ffc93c', { stroke: 6 }); }, true);
+    var wsign = signBoard('PUTT LEAGUE BREWING', 5.6, 0.9, '#E0482F', 'KEG WAREHOUSE');
     wsign.position.copy(W(-3, Lt.y1 - 0.03, 4.6)); scene.add(wsign);
-    var dsign = paintPanel(2.4, 0.5, 256, function (g, w, h) { g.fillStyle = '#1d130c'; g.fillRect(0, 0, w, h); label(g, 'DOCK BANK', w / 2, h / 2, 50, '#ffc93c', {}); });
+    var dsign = signBoard('DOCK BANK', 1.4, 0.36);
     dsign.position.copy(W(D.x, D.y - D.hy - 0.03, D.h + 0.35)); scene.add(dsign);
     // grain silo: ribbed steel, cone roof, ladder
     var Si = C.SILO, silo = new T.Mesh(cylGeom(Si.r, Si.h, 28), toon(0xc7ccd1)); silo.position.copy(W(Si.x, Si.y, 0)); outline(silo, 0.035); scene.add(silo);
@@ -588,7 +601,7 @@ var VenueScene = (function () {
   function glowShell(geom, color) {
     var g = geom.clone(); smoothNormals(g);
     var grp = new T.Group();
-    var halo = new T.Mesh(g, glowMat(color, 0.07, true)), tint = new T.Mesh(g, glowMat(color, 0.012, false));
+    var halo = new T.Mesh(g, glowMat(color, 0.035, true)), tint = new T.Mesh(g, glowMat(color, 0.006, false));
     halo.renderOrder = 3; tint.renderOrder = 3; grp.add(halo); grp.add(tint);
     grp.userData.mats = [halo.material, tint.material];
     return grp;
