@@ -23,7 +23,7 @@ ridiculous rewards. Ships as one self-contained HTML file.
 This writes `dist/putt-league-taproom.html` and the public test page `docs/index.html` (served by GitHub Pages from the `docs/` folder on `main`).
 
 ## Play the test build
-https://demondigitalmedia.github.io/putt_league/
+https://demondigitalmedia.github.io/Putt_League/
 
 ## Roadmap (next, in Claude Code)
 1. Split venues into their own files (venue registry) so new venues drop in.
