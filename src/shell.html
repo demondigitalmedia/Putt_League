@@ -158,13 +158,13 @@ button:focus-visible { outline: 3px solid var(--amber); outline-offset: 3px; }
   background: repeating-conic-gradient(rgba(242,161,59,0.95) 0 10deg, rgba(255,201,60,0.95) 10deg 20deg); animation: spin 12s linear infinite; opacity: 0; transition: opacity 300ms ease; }
 #rays::after { content: ""; position: absolute; inset: 0; border-radius: 50%; background-image: radial-gradient(rgba(29,19,12,0.22) 1.6px, transparent 2.1px); background-size: 8px 8px; }
 #card.jack #rays { opacity: 0.85; }
-#cardBox { position: relative; text-align: center; padding: 14px 18px 16px; border-width: 4px; box-shadow: 6px 6px 0 var(--ink); width: min(310px, 100%); transform: scale(0); }
+#cardBox { position: relative; text-align: center; padding: 12px 16px 14px; border-width: 4px; box-shadow: 6px 6px 0 var(--ink); width: min(310px, calc(100% - 24px)); box-sizing: border-box; overflow: hidden; transform: scale(0); }
 #card.show #cardBox { animation: slam 600ms cubic-bezier(.2,1.5,.4,1) forwards; }
 @keyframes slam { 0% { transform: scale(2.4) rotate(-8deg); opacity: 0; } 60% { transform: scale(0.94) rotate(2deg); opacity: 1; } 100% { transform: scale(1) rotate(-2deg); opacity: 1; } }
 #cardBox .k { font-size: 15px; font-weight: 800; letter-spacing: 0.12em; color: var(--copper); }
-#cardBox .big { white-space: nowrap; font-family: var(--comic); font-size: clamp(42px, 14vw, 62px); line-height: 0.95; letter-spacing: 0.03em; color: var(--red); text-shadow: 3px 3px 0 var(--ink); -webkit-text-stroke: 1.5px var(--ink); }
-#cardBox .amt { font-family: var(--comic); font-size: 44px; line-height: 1; letter-spacing: 0.05em; color: var(--ink); font-variant-numeric: tabular-nums; margin-top: 4px; }
-#cardBox .lines { margin-top: 8px; display: grid; grid-template-columns: 1fr auto; gap: 2px 14px; font-size: 17px; font-weight: 800; letter-spacing: 0.04em; text-align: left; font-variant-numeric: tabular-nums; }
+#cardBox .big { white-space: nowrap; font-family: var(--comic); font-size: clamp(34px, 11vw, 52px); line-height: 0.95; letter-spacing: 0.03em; color: var(--red); text-shadow: 3px 3px 0 var(--ink); -webkit-text-stroke: 1.5px var(--ink); }
+#cardBox .amt { font-family: var(--comic); font-size: 38px; line-height: 1; letter-spacing: 0.05em; color: var(--ink); font-variant-numeric: tabular-nums; margin-top: 4px; }
+#cardBox .lines { margin-top: 8px; display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; font-size: 15px; font-weight: 800; letter-spacing: 0.03em; text-align: left; font-variant-numeric: tabular-nums; white-space: nowrap; overflow-y: auto; }
 #cardBox .lines span:nth-child(even) { text-align: right; color: var(--copper); }
 #cardBtns { position: relative; display: flex; gap: 10px; width: 100%; max-width: 330px; opacity: 0; transform: translateY(30px); transition: opacity 300ms ease, transform 300ms ease; pointer-events: none; }
 #cardBtns.in { opacity: 1; transform: none; pointer-events: auto; }

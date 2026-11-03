@@ -1038,12 +1038,21 @@
     var card = $('card'); card.hidden = false; card.classList.toggle('jack', !!jack);
     $('cardK').textContent = k; $('cardBig').textContent = big; $('cardLines').innerHTML = lines;
     $('replayBtn').textContent = btnA; $('nextBtn').textContent = btnB;
-    var bg = $('cardBig'), bx = $('cardBox'); bg.style.fontSize = ''; var room = bx.clientWidth - 36;
-    if (bg.scrollWidth > room) bg.style.fontSize = (parseFloat(getComputedStyle(bg).fontSize) * room / bg.scrollWidth) + 'px';
+    fitCard(); requestAnimationFrame(fitCard); setTimeout(fitCard, 350);   // again once fonts and layout settle
     card.classList.remove('show'); void card.offsetWidth; card.classList.add('show');
     var t0 = performance.now(), el = $('cardAmt'); (function f() { var q = Math.min(1, (performance.now() - t0) / (reduce ? 1 : 1100)), e = 1 - Math.pow(1 - q, 3); el.textContent = fmt(amt * e); if (q < 1) requestAnimationFrame(f); })();
     setTimeout(function () { $('cardBtns').classList.add('in'); }, reduce ? 0 : 900);
     if (jack) celebrate(1);
+  }
+  // keep everything on the card inside the card and the card inside the screen
+  function fitCard() {
+    var bx = $('cardBox'), bg = $('cardBig'), ln = $('cardLines'), room = bx.clientWidth - 32;
+    if (!room || room < 0) return;
+    bg.style.fontSize = ''; var w = bg.scrollWidth; if (w > room) bg.style.fontSize = (parseFloat(getComputedStyle(bg).fontSize) * room / w * 0.97) + 'px';
+    ln.style.fontSize = ''; ln.style.maxHeight = '';
+    for (var i = 0; i < 8 && ln.scrollWidth > ln.clientWidth + 1; i++) ln.style.fontSize = (parseFloat(getComputedStyle(ln).fontSize) - 1) + 'px';
+    var avail = app.clientHeight - 150 - (bx.offsetHeight - ln.offsetHeight);
+    if (ln.offsetHeight > avail) ln.style.maxHeight = Math.max(80, avail) + 'px';
   }
   var lastCard = null;
   function holeCard() {
@@ -1066,7 +1075,7 @@
   function reopenCard() { var c = lastCard; setCard(c.k, c.big, c.amt, c.lines, false, 'REPLAY', c.last ? 'FINISH' : 'NEXT HOLE', 'hole'); }
   function courseCard() {
     var lines = '', strokes = 0, par = 0;
-    G.holeLog.forEach(function (l) { lines += '<span>HOLE ' + l.n + ': ' + l.text + '</span><span>+' + fmt(l.pts) + '</span>'; if (l.strokes) { strokes += l.strokes; par += l.par; } });
+    G.holeLog.forEach(function (l) { lines += '<span>' + l.n + ' · ' + l.text + '</span><span>+' + fmt(l.pts) + '</span>'; if (l.strokes) { strokes += l.strokes; par += l.par; } });
     var big = G.mode === 'pitch' ? (strokes - par < 0 ? (strokes - par) + ' UNDER?! ' : strokes - par === 0 ? 'EVEN PAR' : '+' + (strokes - par)) : 'COURSE DONE';
     if (G.mode === 'pitch' && strokes - par < 0) big = (par - strokes) + ' UNDER!';
     setCard('THE TAPROOM · ' + (G.mode === 'putt' ? 'PUTT' : 'PITCH'), big, G.score, lines, G.score > 20000, 'MENU', 'PLAY AGAIN', 'course');

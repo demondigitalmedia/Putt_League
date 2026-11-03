@@ -158,13 +158,13 @@ button:focus-visible { outline: 3px solid var(--amber); outline-offset: 3px; }
   background: repeating-conic-gradient(rgba(242,161,59,0.95) 0 10deg, rgba(255,201,60,0.95) 10deg 20deg); animation: spin 12s linear infinite; opacity: 0; transition: opacity 300ms ease; }
 #rays::after { content: ""; position: absolute; inset: 0; border-radius: 50%; background-image: radial-gradient(rgba(29,19,12,0.22) 1.6px, transparent 2.1px); background-size: 8px 8px; }
 #card.jack #rays { opacity: 0.85; }
-#cardBox { position: relative; text-align: center; padding: 14px 18px 16px; border-width: 4px; box-shadow: 6px 6px 0 var(--ink); width: min(310px, 100%); transform: scale(0); }
+#cardBox { position: relative; text-align: center; padding: 12px 16px 14px; border-width: 4px; box-shadow: 6px 6px 0 var(--ink); width: min(310px, calc(100% - 24px)); box-sizing: border-box; overflow: hidden; transform: scale(0); }
 #card.show #cardBox { animation: slam 600ms cubic-bezier(.2,1.5,.4,1) forwards; }
 @keyframes slam { 0% { transform: scale(2.4) rotate(-8deg); opacity: 0; } 60% { transform: scale(0.94) rotate(2deg); opacity: 1; } 100% { transform: scale(1) rotate(-2deg); opacity: 1; } }
 #cardBox .k { font-size: 15px; font-weight: 800; letter-spacing: 0.12em; color: var(--copper); }
-#cardBox .big { white-space: nowrap; font-family: var(--comic); font-size: clamp(42px, 14vw, 62px); line-height: 0.95; letter-spacing: 0.03em; color: var(--red); text-shadow: 3px 3px 0 var(--ink); -webkit-text-stroke: 1.5px var(--ink); }
-#cardBox .amt { font-family: var(--comic); font-size: 44px; line-height: 1; letter-spacing: 0.05em; color: var(--ink); font-variant-numeric: tabular-nums; margin-top: 4px; }
-#cardBox .lines { margin-top: 8px; display: grid; grid-template-columns: 1fr auto; gap: 2px 14px; font-size: 17px; font-weight: 800; letter-spacing: 0.04em; text-align: left; font-variant-numeric: tabular-nums; }
+#cardBox .big { white-space: nowrap; font-family: var(--comic); font-size: clamp(34px, 11vw, 52px); line-height: 0.95; letter-spacing: 0.03em; color: var(--red); text-shadow: 3px 3px 0 var(--ink); -webkit-text-stroke: 1.5px var(--ink); }
+#cardBox .amt { font-family: var(--comic); font-size: 38px; line-height: 1; letter-spacing: 0.05em; color: var(--ink); font-variant-numeric: tabular-nums; margin-top: 4px; }
+#cardBox .lines { margin-top: 8px; display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; font-size: 15px; font-weight: 800; letter-spacing: 0.03em; text-align: left; font-variant-numeric: tabular-nums; white-space: nowrap; overflow-y: auto; }
 #cardBox .lines span:nth-child(even) { text-align: right; color: var(--copper); }
 #cardBtns { position: relative; display: flex; gap: 10px; width: 100%; max-width: 330px; opacity: 0; transform: translateY(30px); transition: opacity 300ms ease, transform 300ms ease; pointer-events: none; }
 #cardBtns.in { opacity: 1; transform: none; pointer-events: auto; }
@@ -4127,12 +4127,21 @@ var VenueScene = (function () {
     var card = $('card'); card.hidden = false; card.classList.toggle('jack', !!jack);
     $('cardK').textContent = k; $('cardBig').textContent = big; $('cardLines').innerHTML = lines;
     $('replayBtn').textContent = btnA; $('nextBtn').textContent = btnB;
-    var bg = $('cardBig'), bx = $('cardBox'); bg.style.fontSize = ''; var room = bx.clientWidth - 36;
-    if (bg.scrollWidth > room) bg.style.fontSize = (parseFloat(getComputedStyle(bg).fontSize) * room / bg.scrollWidth) + 'px';
+    fitCard(); requestAnimationFrame(fitCard); setTimeout(fitCard, 350);   // again once fonts and layout settle
     card.classList.remove('show'); void card.offsetWidth; card.classList.add('show');
     var t0 = performance.now(), el = $('cardAmt'); (function f() { var q = Math.min(1, (performance.now() - t0) / (reduce ? 1 : 1100)), e = 1 - Math.pow(1 - q, 3); el.textContent = fmt(amt * e); if (q < 1) requestAnimationFrame(f); })();
     setTimeout(function () { $('cardBtns').classList.add('in'); }, reduce ? 0 : 900);
     if (jack) celebrate(1);
+  }
+  // keep everything on the card inside the card and the card inside the screen
+  function fitCard() {
+    var bx = $('cardBox'), bg = $('cardBig'), ln = $('cardLines'), room = bx.clientWidth - 32;
+    if (!room || room < 0) return;
+    bg.style.fontSize = ''; var w = bg.scrollWidth; if (w > room) bg.style.fontSize = (parseFloat(getComputedStyle(bg).fontSize) * room / w * 0.97) + 'px';
+    ln.style.fontSize = ''; ln.style.maxHeight = '';
+    for (var i = 0; i < 8 && ln.scrollWidth > ln.clientWidth + 1; i++) ln.style.fontSize = (parseFloat(getComputedStyle(ln).fontSize) - 1) + 'px';
+    var avail = app.clientHeight - 150 - (bx.offsetHeight - ln.offsetHeight);
+    if (ln.offsetHeight > avail) ln.style.maxHeight = Math.max(80, avail) + 'px';
   }
   var lastCard = null;
   function holeCard() {
@@ -4155,7 +4164,7 @@ var VenueScene = (function () {
   function reopenCard() { var c = lastCard; setCard(c.k, c.big, c.amt, c.lines, false, 'REPLAY', c.last ? 'FINISH' : 'NEXT HOLE', 'hole'); }
   function courseCard() {
     var lines = '', strokes = 0, par = 0;
-    G.holeLog.forEach(function (l) { lines += '<span>HOLE ' + l.n + ': ' + l.text + '</span><span>+' + fmt(l.pts) + '</span>'; if (l.strokes) { strokes += l.strokes; par += l.par; } });
+    G.holeLog.forEach(function (l) { lines += '<span>' + l.n + ' · ' + l.text + '</span><span>+' + fmt(l.pts) + '</span>'; if (l.strokes) { strokes += l.strokes; par += l.par; } });
     var big = G.mode === 'pitch' ? (strokes - par < 0 ? (strokes - par) + ' UNDER?! ' : strokes - par === 0 ? 'EVEN PAR' : '+' + (strokes - par)) : 'COURSE DONE';
     if (G.mode === 'pitch' && strokes - par < 0) big = (par - strokes) + ' UNDER!';
     setCard('THE TAPROOM · ' + (G.mode === 'putt' ? 'PUTT' : 'PITCH'), big, G.score, lines, G.score > 20000, 'MENU', 'PLAY AGAIN', 'course');
