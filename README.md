@@ -20,6 +20,11 @@ ridiculous rewards. Ships as one self-contained HTML file.
 ## Build
     python3 build.py
 
+This writes `dist/putt-league-taproom.html` and the public test page `docs/index.html` (served by GitHub Pages from the `docs/` folder on `main`).
+
+## Play the test build
+https://demondigitalmedia.github.io/putt_league/
+
 ## Roadmap (next, in Claude Code)
 1. Split venues into their own files (venue registry) so new venues drop in.
 2. Sound: chains, gong, skips, crowd, jackpot reel, all driven by the physics events.
