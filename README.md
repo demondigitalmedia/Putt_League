@@ -20,7 +20,7 @@ ridiculous rewards. Ships as one self-contained HTML file.
 ## Build
     python3 build.py
 
-This writes `dist/putt-league-taproom.html` and the public test page `docs/index.html` (served by GitHub Pages from the `docs/` folder on `main`).
+This writes `dist/putt-league-taproom.html` and the public test page `docs/index.html`. `./publish_pages.sh` rebuilds and pushes that page to the `gh-pages` branch, which GitHub Pages serves.
 
 ## Play the test build
 https://demondigitalmedia.github.io/Putt_League/
