@@ -1988,17 +1988,45 @@ button:focus-visible { outline: 3px solid var(--amber); outline-offset: 3px; }
 });
 
 /* =====================================================================
-   PUTT LEAGUE · THE TAPROOM COURSE (6 holes: the taproom, the beer garden, the back lot)
-   The whole venue in the flight engine's frame (metres, x right, y toward the back of the
-   building and out into the beer garden, z up, ground at 0): the long taproom, the roll-up door,
-   the beer garden, every solid, every surface, three baskets, each hole's Pitch tee and two Putt
-   tees, the discs, the aim solver, the lie rule and the scoring. The 3D scene is drawn from these
-   same numbers, so what you see is what the disc hits.
+   PUTT LEAGUE · VENUE REGISTRY
+   Every venue registers itself here by id. A venue is split in two files that register into
+   the same entry: `venues/<id>.js` (the model: layout, holes, surfaces, solids, lie bounds,
+   trick reads; runs in Node for the tests) and `venues/<id>.scene.js` (three.js: the 3D build
+   and the bonus glows; browser only). Course.use(id) makes one the live venue.
    ===================================================================== */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory();
-  else root.Course = factory();
+  else root.Venues = factory();
 })(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+  const list = [], byId = {};
+  // registering an id twice merges the parts (the model file, then its scene file)
+  function register(v) {
+    if (!v || !v.id) throw new Error('a venue needs an id');
+    if (byId[v.id]) Object.assign(byId[v.id], v);
+    else { byId[v.id] = v; list.push(v); }
+    return byId[v.id];
+  }
+  function get(id) {
+    const v = id ? byId[id] : list[0];
+    if (!v) throw new Error('no venue "' + id + '" (have: ' + list.map(x => x.id).join(', ') + ')');
+    return v;
+  }
+  return { register, get, list: () => list.slice(), ids: () => list.map(v => v.id) };
+});
+
+/* =====================================================================
+   PUTT LEAGUE · VENUE · THE TAPROOM (6 holes: the taproom, the beer garden, the back lot)
+   The whole venue in the flight engine's frame (metres, x right, y toward the back of the
+   building and out into the beer garden, z up, ground at 0): the long taproom, the roll-up door,
+   the beer garden, the back lot, every solid, every surface, the holes (basket, bank board, Pitch
+   tee and two Putt tees), where the disc is in play, and the venue's own trick reads. The 3D
+   scene (taproom.scene.js) is drawn from these same numbers, so what you see is what the disc hits.
+   ===================================================================== */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory(require('../venues.js'));
+  else factory(root.Venues);
+})(typeof self !== 'undefined' ? self : this, function (Venues) {
   'use strict';
   const FT = 0.3048;
 
@@ -2038,34 +2066,26 @@ button:focus-visible { outline: 3px solid var(--amber); outline-offset: 3px; }
   const LOT_POLES = [{ x: -15.4, y: 104 }, { x: 15.4, y: 104 }, { x: -15.4, y: 122.6 }, { x: 15.4, y: 122.6 }];
 
   /* ---------- the holes ----------
-     backstop: a bank board behind each basket (the gong, a keg wall, a crate tower). */
+     backstop: a bank board behind each basket (the gong, a keg wall, a crate tower); bank is its call on a bank-in. */
   const HOLES = [
     { n: 1, name: 'THE COPPER AISLE', par: 2, basket: { x: 1.0, y: 26.0 },
       tee: { x: 0.6, y: -0.3 }, short: { x: 1.0, y: 18.38 }, long: { x: -1.3, y: 14.0 },
-      backstop: { name: 'Gong', kind: 'gong', x: 1.0, y: 26.8, r: 0.62, z: 1.35, t: 0.05 }, inside: true },
+      backstop: { name: 'Gong', kind: 'gong', bank: 'RING THE GONG', x: 1.0, y: 26.8, r: 0.62, z: 1.35, t: 0.05 }, inside: true },
     { n: 2, name: 'OUT THE DOOR', par: 3, basket: { x: -8.0, y: 56.0 },
       tee: { x: 2.0, y: -0.6 }, short: { x: -8.0, y: 48.38 }, long: { x: 2.44, y: 48.27 },
-      backstop: { name: 'Keg wall', kind: 'kegs', x: -8.0, y: 57.0, hx: 0.95, hy: 0.25, h: 1.9 }, inside: false },
+      backstop: { name: 'Keg wall', kind: 'kegs', bank: 'KEG BANK', x: -8.0, y: 57.0, hx: 0.95, hy: 0.25, h: 1.9 }, inside: false },
     { n: 3, name: 'THE BIG OAK', par: 3, basket: { x: -10.0, y: 76.0 },
       tee: { x: 12.5, y: 44.0 }, short: { x: -10.0, y: 68.38 }, long: { x: -3.58, y: 65.64 },
-      backstop: { name: 'Crate tower', kind: 'crates', x: -10.0, y: 77.0, hx: 0.9, hy: 0.4, h: 1.8 }, inside: false },
+      backstop: { name: 'Crate tower', kind: 'crates', bank: 'CRATE BANK', x: -10.0, y: 77.0, hx: 0.9, hy: 0.4, h: 1.8 }, inside: false },
     { n: 4, name: 'SILO SWEEP', par: 3, basket: { x: -12.4, y: 100.0 },
       tee: { x: 6.0, y: 84.0 }, short: { x: -12.4, y: 92.38 }, long: { x: -2.6, y: 92.6 },
-      backstop: { name: 'Grain sacks', kind: 'sacks', x: -13.05, y: 100.6, hx: 0.9, hy: 0.45, h: 1.6 }, inside: false },
+      backstop: { name: 'Grain sacks', kind: 'sacks', bank: 'SACK BANK', x: -13.05, y: 100.6, hx: 0.9, hy: 0.45, h: 1.6 }, inside: false },
     { n: 5, name: 'TRUCK STOP', par: 3, basket: { x: -3.2, y: 111.5 },
       tee: { x: 15.5, y: 103.5 }, short: { x: -3.2, y: 103.88 }, long: { x: 8.4, y: 107.8 },
-      backstop: { name: 'Pallet wall', kind: 'pallets', x: -4.05, y: 111.75, hx: 0.4, hy: 0.95, h: 1.7 }, inside: false },
+      backstop: { name: 'Pallet wall', kind: 'pallets', bank: 'PALLET BANK', x: -4.05, y: 111.75, hx: 0.4, hy: 0.95, h: 1.7 }, inside: false },
     { n: 6, name: 'THE LOADING DOCK', par: 3, basket: { x: 8.0, y: 120.5 },
       tee: { x: -12.0, y: 86.0 }, short: { x: 3.43, y: 114.4 }, long: { x: 14.7, y: 110.3 },
-      backstop: { name: 'Loading dock', kind: 'dock', x: DOCK.x, y: DOCK.y, hx: DOCK.hx, hy: DOCK.hy, h: DOCK.h }, inside: false },
-  ];
-  HOLES.forEach(h => { h.dist = Math.hypot(h.basket.x - h.tee.x, h.basket.y - h.tee.y); });
-
-  /* ---------- discs (speed 4 and under) ---------- */
-  const DISCS = [
-    { key: 'putter', label: 'PUTTER', speed: 2, glide: 3, turn: 0, fade: 1, color: 0xF2A13B },
-    { key: 'approach', label: 'APPROACH', speed: 3, glide: 4, turn: 0, fade: 2, color: 0x2E9C9A },
-    { key: 'mid', label: 'MID', speed: 4, glide: 5, turn: -1, fade: 1, color: 0xE0482F },
+      backstop: { name: 'Loading dock', kind: 'dock', bank: 'DOCK BANK', x: DOCK.x, y: DOCK.y, hx: DOCK.hx, hy: DOCK.hy, h: DOCK.h }, inside: false },
   ];
 
   /* ---------- surfaces ---------- */
@@ -2073,14 +2093,14 @@ button:focus-visible { outline: 3px solid var(--amber); outline-offset: 3px; }
     sound: 'contact.wood', embed: 0, look: '#b87a45', label: 'Lacquered taproom floor' };
   // venue surfaces, fastest to slowest after a landing: glazed tile (for themes that call for it), lacquered
   // taproom wood (baseline), patio flagstone (~70% of the wood's slide), garden grass (~25%), gravel paths (~15%)
-  const VENUE = {
+  const SURFACES = {
+    taproom_floor: FLOOR,
     tile: { slideFriction: 0.33, skipRetention: 0.88, restitution: 1.0, grassDrag: 0, edgeGrab: 0.01, rollResistance: 0.015, sound: 'contact.hard', embed: 0, look: '#d9d4c7', label: 'Glazed tile' },
     lot_asphalt: { slideFriction: 0.5, skipRetention: 0.72, restitution: 0.65, grassDrag: 0, edgeGrab: 0.04, rollResistance: 0.028, sound: 'contact.hard', embed: 0, look: '#4a4a4f', label: 'Asphalt lot' },
     patio_flagstone: { slideFriction: 0.6, skipRetention: 0.58, restitution: 0.55, grassDrag: 0, edgeGrab: 0.07, rollResistance: 0.045, sound: 'contact.rock', embed: 0, look: '#8f8a80', label: 'Patio flagstone' },
     garden_grass: { slideFriction: 0.55, skipRetention: 0.65, restitution: 0.25, grassDrag: 1.2, edgeGrab: 0.12, rollResistance: 0.05, sound: 'contact.grass', embed: 0.1, look: '#6cc25a', label: 'Garden grass' },
     garden_gravel: { slideFriction: 1.0, skipRetention: 0.25, restitution: 0.15, grassDrag: 1.6, edgeGrab: 0.22, rollResistance: 0.2, sound: 'contact.gravel', embed: 0.02, look: '#9b958b', label: 'Gravel path' },
   };
-  function installFloor(MATS) { MATS.surfaces.taproom_floor = FLOOR; Object.keys(VENUE).forEach(k => { MATS.surfaces[k] = VENUE[k]; }); }
   function surfaceAt(x, y) {
     if (y < ROOM.y1) return 'taproom_floor';
     if (y > LOT.y0) { if (x < LOT.x0 + 1.4 || x > LOT.x1 - 1.4) return 'garden_gravel'; if (Math.hypot(x - SILO.x, y - SILO.y) < SILO.r + 1.6) return 'garden_grass'; return 'lot_asphalt'; }
@@ -2094,12 +2114,18 @@ button:focus-visible { outline: 3px solid var(--amber); outline-offset: 3px; }
     if (y > ROOM.y1 && y <= GARDEN.y1) return x >= GARDEN.x0 && x <= GARDEN.x1;
     return y > GARDEN.y1 && y <= LOT.y1 && x >= LOT.x0 && x <= LOT.x1;
   }
+  // a lie this close (m) to a wall, a fence or the door frame is no good
+  function nearEdge(x, y, m) {
+    const R = ROOM, G = GARDEN;
+    if (y < R.y1 && (x < R.x0 + m || x > R.x1 - m || y < R.y0 + m)) return true;
+    if (y >= R.y1 && y <= G.y1 && (x < G.x0 + m || x > G.x1 - m || (y > G.y1 - m && (x < GATE.x0 + m || x > GATE.x1 - m)))) return true;
+    if (y > G.y1 && (x < LOT.x0 + m || x > LOT.x1 - m || y > LOT.y1 - m || (y < G.y1 + m && (x < GATE.x0 + m || x > GATE.x1 - m)))) return true;
+    if (Math.abs(y - R.y1) < m && (x < DOOR.x0 + m || x > DOOR.x1 - m)) return true;
+    return false;
+  }
 
-  /* ---------- every solid (world metres) ---------- */
-  function worldSolids(activeHole) {
-    const S = [];
-    const box = (name, x, y, hx, hy, z0, z1, mat, tag) => S.push({ kind: 'box', x, y, hx, hy, yaw: 0, z0, z1, mat, name, tag: tag || name });
-    const cyl = (name, x, y, r, z0, z1, mat, tag) => S.push({ kind: 'cyl', x, y, r, z0, z1, mat, name, tag: tag || name });
+  /* ---------- every solid but the baskets and their bank boards (world metres) ---------- */
+  function solids(box, cyl, S) {
     const R = ROOM, gH = 4.2;
     // the building
     box('Wall', R.x0 - 0.15, (R.y0 + R.y1) / 2, 0.15, (R.y1 - R.y0) / 2, 0, R.h, 'brick_wall', 'Wall');
@@ -2150,475 +2176,93 @@ button:focus-visible { outline: 3px solid var(--amber); outline-offset: 3px; }
     box('Food truck', TRUCK.x, TRUCK.y, TRUCK.hx, TRUCK.hy, 0.3, TRUCK.h, 'metal', 'Truck');
     PLANTERS.forEach(p => cyl('Planter', p.x, p.y, 0.35, 0, 0.55, 'stone', 'Planter'));
     LIGHT_POLES.forEach(p => cyl('Light pole', p.x, p.y, 0.07, 0, gH + 0.4, 'timber', 'Pole'));
-    // baskets and their bank boards
-    HOLES.forEach((h, i) => {
-      const b = h.backstop;
-      if (b.kind === 'gong') box('Gong', b.x, b.y, b.r, b.t, b.z - b.r, b.z + b.r, 'metal', 'Gong');
-      else box(b.name, b.x, b.y, b.hx, b.hy, 0, b.h, b.kind === 'kegs' ? 'metal' : b.kind === 'sacks' ? 'hay' : b.kind === 'dock' ? 'stone' : 'timber', b.name);
-      if (i === activeHole) {
-        // the live basket's pole and base, for a disc already on the ground (the catcher handles them in the air)
-        S.push({ kind: 'cyl', x: h.basket.x, y: h.basket.y, r: 0.024, z0: 0, z1: 1.47, mat: 'metal', name: 'Basket pole', tag: 'Basket', groundOnly: true });
-        S.push({ kind: 'cyl', x: h.basket.x, y: h.basket.y, r: 0.22, z0: 0, z1: 0.06, mat: 'metal', name: 'Basket base', tag: 'Basket', groundOnly: true });
-      } else {
-        cyl('Other basket', h.basket.x, h.basket.y, 0.03, 0, 1.47, 'metal', 'OtherBasket');
-        cyl('Other basket', h.basket.x, h.basket.y, 0.34, 0.58, 0.82, 'metal', 'OtherBasket');
-        cyl('Other basket', h.basket.x, h.basket.y, 0.29, 1.32, 1.43, 'metal', 'OtherBasket');
-      }
-    });
-    return S;
   }
-  function solidsFrom(o, activeHole) {
-    return worldSolids(activeHole).map(s => {
-      const c = JSON.parse(JSON.stringify(s));
-      if (c.kind === 'capsule') { c.a.x -= o.x; c.a.y -= o.y; c.b.x -= o.x; c.b.y -= o.y; }
-      else { c.x -= o.x; c.y -= o.y; }
-      return c;
-    });
-  }
+  // relief from being pinned against something big: the silo, the box truck (with its cab), the kettles, the fermenters
+  const BIG = [{ k: 'c', x: SILO.x, y: SILO.y, r: SILO.r }, { k: 'b', x: BOX_TRUCK.x, y: BOX_TRUCK.y + 2.3, hx: BOX_TRUCK.hx, hy: BOX_TRUCK.hy + 2.3 }]
+    .concat(KETTLES.map(q => ({ k: 'c', x: q.x, y: q.y, r: q.r }))).concat(FERMENTERS.map(q => ({ k: 'c', x: q.x, y: q.y, r: q.r })));
 
-  /* ---------- the throw: flick class -> release, and the aim solver ---------- */
-  const RELEASE_H = 1.0, CHAIN_Z = 1.08;
-  const BANK = { 3: -26, 2: -16, 1: -8, 0: 0, '-1': 8, '-2': 16, '-3': 26 };
-  function mphFor(d) { return d <= 12 ? 11 + 0.95 * d : 22.4 + 0.45 * (d - 12); }   // putts: a firm-but-dying pace, so a miss ends a few feet past, not across the room
-  function baseParams(disc, cls) {
-    return { disc: { speed: disc.speed, glide: disc.glide, turn: disc.turn, fade: disc.fade }, hand: 'RHBH', spin: 900,
-      hyzer: BANK[cls] || 0, launchAngle: 6, nose: 4.5, releaseHeight: RELEASE_H / FT, groundEffect: 0.25 };
-  }
-  /* aim and launch that carry a clean, neutral throw of this class (nothing in the way) to the target at a
-     natural speed for the distance. Nose and power are applied after, as deviations. */
-  function solve(P, from, disc, cls, target, ceiling) {
-    const tx = target.x - from.x, ty = target.y - from.y, dist = Math.max(0.5, Math.hypot(tx, ty));
-    let aimZ = target.z != null ? target.z : CHAIN_Z;
-    const p = baseParams(disc, cls);
-    const ux = tx / dist, uy = ty / dist;
-    const probe = (aimDeg, la, mph) => {
-      const r = P.simulate(Object.assign({}, p, { aim: aimDeg, armSpeed: mph, launchAngle: la, nose: la - 1.5, seed: 1 }));
-      let prev = null, apex = 0;
-      for (const s of r.samples) {
-        apex = Math.max(apex, s.z * FT);
-        const x = s.x * FT, y = s.y * FT, along = x * ux + y * uy;
-        if (along >= dist) {
-          let k = 1, q = s;
-          if (prev) { const pa = prev.x * FT * ux + prev.y * FT * uy; k = (dist - pa) / ((along - pa) || 1); q = prev; }
-          const lx = (q.x + (s.x - q.x) * k) * FT, ly = (q.y + (s.y - q.y) * k) * FT, z = (q.z + (s.z - q.z) * k) * FT;
-          return { z, lat: lx * uy - ly * ux, reached: true, apex };
-        }
-        prev = s;
-      }
-      const last = r.samples[r.samples.length - 1];
-      return { z: -1, lat: last.x * FT * uy - last.y * FT * ux, reached: false, apex };
-    };
-    let aim = Math.atan2(tx, ty) * 180 / Math.PI, launch, speed;
-    if (target.carry) {
-      // aimed through a point in the air: the disc goes THROUGH the reticle and comes down about where it is
-      // headed (the basket, or just past the point if the point is beyond it). For a launch angle, find the arm
-      // speed that passes the point; then pick the launch whose landing matches, the lowest one if several do.
-      // Indoors nothing may top out into the rafters.
-      const goal = target.land || Math.max(dist + 1.5, (target.carry || dist) / 1.2), roof = ceiling ? Math.min(ceiling, 4.6) : 0;
-      const run = (la, mph) => {
-        const r = P.simulate(Object.assign({}, p, { aim, armSpeed: mph, launchAngle: la, nose: la - 1.5, seed: 1 }));
-        let prev = null, apex = 0, zAt = null, lat = 0, land = 0;
-        for (const s of r.samples) {
-          apex = Math.max(apex, s.z * FT);
-          const x = s.x * FT, y = s.y * FT, along = x * ux + y * uy; land = along;
-          if (zAt === null && along >= dist) {
-            let k = 1, q = s;
-            if (prev) { const pa = prev.x * FT * ux + prev.y * FT * uy; k = (dist - pa) / ((along - pa) || 1); q = prev; }
-            const lx = (q.x + (s.x - q.x) * k) * FT, ly = (q.y + (s.y - q.y) * k) * FT; zAt = (q.z + (s.z - q.z) * k) * FT; lat = lx * uy - ly * ux;
-          }
-          prev = s;
-        }
-        if (zAt === null) { const L = r.samples[r.samples.length - 1]; lat = L.x * FT * uy - L.y * FT * ux; }
-        return { zAt, lat, land, apex };
-      };
-      const speedFor = (la) => {
-        let lo = 8, hi = 85, best = null;
-        for (let i = 0; i < 11; i++) {
-          const mid = (lo + hi) / 2, r = run(la, mid);
-          aim += Math.atan2(-r.lat, dist) * 180 / Math.PI;
-          if (r.zAt === null || r.zAt < aimZ) lo = mid; else hi = mid;
-          best = { mph: mid, r };
-        }
-        const r = run(la, (lo + hi) / 2);
-        return { la, mph: (lo + hi) / 2, r, aim, ok: r.zAt !== null && Math.abs(r.zAt - aimZ) < 0.25 && hi < 84 };
-      };
-      const search = () => {
-        const la0 = Math.max(-4, Math.min(40, Math.atan2(aimZ - RELEASE_H, dist) * 57.3 + 1));
-        let pick = null, prevC = null;
-        for (let la = la0; la <= 50; la += 5) {
-          const c = speedFor(la);
-          if (!c.ok || (roof && c.r.apex > roof)) continue;
-          if (c.r.land <= goal) {
-            if (prevC) { let A = prevC, B = c; for (let j = 0; j < 3; j++) { const m = speedFor((A.la + B.la) / 2); if (!m.ok || (roof && m.r.apex > roof)) break; if (m.r.land > goal) A = m; else B = m; } pick = Math.abs(A.r.land - goal) < Math.abs(B.r.land - goal) ? A : B; }
-            else pick = c;
-            break;
-          }
-          prevC = c;
-        }
-        return pick || prevC;
-      };
-      let pick = search();
-      // indoors, a point too high to thread under the rafters from here: the highest line that fits
-      while (!pick && roof && aimZ > RELEASE_H + 0.2) { aimZ = Math.max(RELEASE_H, aimZ - 0.4); pick = search(); }
-      if (!pick) pick = speedFor(Math.max(-4, Math.atan2(aimZ - RELEASE_H, dist) * 57.3 + 1));
-      launch = pick.la; speed = pick.mph; aim = pick.aim;
-      // polish: settle the line and the arm on this launch so it really threads the point
-      for (let j = 0; j < 5; j++) {
-        const r = run(launch, speed); if (r.zAt === null) { speed *= 1.03; continue; }
-        if (roof && r.apex > roof && j > 0) { speed /= 1.02; break; }
-        aim += Math.atan2(-r.lat, dist) * 180 / Math.PI;
-        const dz = aimZ - r.zAt; if (Math.abs(dz) < 0.04 && Math.abs(r.lat) < 0.04) break;
-        speed *= 1 + Math.max(-0.02, Math.min(0.02, dz * 0.03));
-      }
-    } else if (dist <= 13) {
-      speed = mphFor(dist); launch = 6;
-      for (let i = 0; i < 18; i++) {
-        const a = probe(aim, launch, speed);
-        aim += Math.atan2(-a.lat, dist) * 180 / Math.PI;
-        const dz = aimZ - a.z;
-        if (a.reached && Math.abs(dz) < 0.015 && Math.abs(a.lat) < 0.015) break;
-        launch += a.reached ? Math.max(-5, Math.min(5, dz / dist * 57.3 * 0.9)) : 3;
-        if (launch > 24) { launch = 24; speed *= 1.05; }
-        launch = Math.max(-8, launch);
-      }
-    } else {
-      // pitches: a natural launch for the disc; the speed is what we solve (and the launch drops if the apex would hit a ceiling)
-      launch = disc.speed <= 2 ? 11 : disc.speed === 3 ? 9 : 8;
-      speed = mphFor(dist);
-      for (let i = 0; i < 16; i++) {
-        const a = probe(aim, launch, speed);
-        aim += Math.atan2(-a.lat, dist) * 180 / Math.PI;
-        if (ceiling && a.apex > ceiling && launch > 2) { launch -= 1.5; continue; }
-        const dz = aimZ - a.z;
-        if (a.reached && Math.abs(dz) < 0.03 && Math.abs(a.lat) < 0.03) break;
-        speed *= a.reached ? (1 + Math.max(-0.08, Math.min(0.12, dz / dist * 1.4))) : 1.1;
-        speed = Math.max(8, Math.min(75, speed));
-      }
-    }
-    return Object.assign(p, { aim, launchAngle: launch, nose: launch - 1.5, armSpeed: speed, solvedMph: speed, dist });
-  }
+  /* ---------- aiming and the lid on a throw ---------- */
   // where to aim by default from a lie: the basket, unless the lie is inside and the basket is out in the garden
-  function defaultTarget(holeIndex, lie) {
-    const h = HOLES[holeIndex];
+  function defaultTarget(h, lie) {
     if (lie.y < ROOM.y1 - 0.5 && h.basket.y > ROOM.y1) return { x: DOOR.x1 - 1.4, y: ROOM.y1 + 4, z: 0.02, floor: true, waypoint: true };
     return null;
   }
+  const inside = (x, y, m) => y < ROOM.y1 - (m || 0);
+  // the rafters if you are inside; the door frame if you are outside throwing back in
+  function ceilingFor(o, t, basket) { if (o.y < ROOM.y1) return 5.2; return (t.y < ROOM.y1 || basket.y < ROOM.y1) ? DOOR.h - 0.2 : 0; }
+  const airCap = (x, y) => y < ROOM.y1 ? 4.0 : 30;   // the highest a reticle can float
+  // the course reveal's path for a hole: out through the door when the tee is inside and the basket is not
+  function introVia(h, tee) { const w = defaultTarget(h, tee); return w ? [{ x: w.x, y: ROOM.y1 - 1.5 }, { x: w.x, y: ROOM.y1 + 1.5 }] : []; }
 
-  function throwIt(E, holeIndex, from, params, seed) {
-    const h = HOLES[holeIndex], o = { x: from.x, y: from.y, z: 0 };
-    const sim = Object.assign({}, params, {
-      seed: seed != null ? seed : 1,
-      collider: E.FB.createCatcher({ base: { x: h.basket.x - o.x, y: h.basket.y - o.y, z: 0 }, mount: 'ground' }),
-      contact: E.CT.create({ materials: E.MATS, solidMaterials: E.MATS.solids, solids: solidsFrom(o, holeIndex), surfaceAt: (x, y) => surfaceAt(x + o.x, y + o.y), noTombstone: true, seed: seed || 7 }),
-    });
-    const rec = E.P.simulate(sim);
-    rec.origin = o; rec.hole = holeIndex;
-    const last = rec.samples[rec.samples.length - 1];
-    let li = rec.samples.length - 1; for (let i = rec.samples.length - 1; i >= 0; i--) if (!rec.samples[i].post) { li = i; break; }
-    const L = rec.samples[li];
-    rec.rest = { x: L.x * FT + o.x, y: L.y * FT + o.y, z: L.z * FT };
-    return rec;
+  /* ---------- cameras: kept inside the walls and out of the big things ---------- */
+  const CAM_BLOCK = [];
+  KETTLES.forEach(k => { CAM_BLOCK.push([k.x, k.y, k.r + 0.45]); });
+  FERMENTERS.forEach(f => { CAM_BLOCK.push([f.x, f.y, f.r + 0.45]); });
+  POSTS_X.forEach(x => { POSTS_Y.forEach(y => { CAM_BLOCK.push([x, y, 0.55]); }); });
+  CAM_BLOCK.push([OAK.x, OAK.y, 1.0]); CAM_BLOCK.push([TRUCK.x, TRUCK.y, 3.4]); CAM_BLOCK.push([FIREPIT.x, FIREPIT.y, 1.3]); CAM_BLOCK.push([SILO.x, SILO.y, SILO.r + 0.6]);
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  function camClamp(x, y, z, isIn) {
+    if (isIn) return { x: clamp(x, ROOM.x0 + 0.35, ROOM.x1 - 0.35), y: clamp(y, ROOM.y0 + 0.35, ROOM.y1 - 0.35), z: clamp(z, 0.35, 5.2) };
+    return { x: clamp(x, GARDEN.x0 + 0.4, GARDEN.x1 - 0.4), y: clamp(y, ROOM.y1 + 0.5, LOT.y1 - 0.5), z: Math.max(0.35, z) };
   }
+  // the camera is under the taproom roof (the ceiling stays drawn), and the height above which the roof is in the way
+  const underRoof = (x, y, z) => y < ROOM.y1 && y > ROOM.y0 && x > ROOM.x0 && x < ROOM.x1 && z < ROOM.h - 0.2;
 
-  /* ---------- the lie: where the next throw goes from ---------- */
-  function footprints(activeHole) {
-    const out = [];
-    worldSolids(activeHole).forEach(s => {
-      if (s.tag === 'Wall' || s.tag === 'Ceiling' || s.tag === 'Beam' || s.tag === 'Fence' || s.groundOnly || s.kind === 'blob') return;
-      if (s.kind === 'box') out.push({ k: 'box', x: s.x, y: s.y, hx: s.hx, hy: s.hy });
-      else if (s.kind === 'cyl') { if (s.z0 < 1.5) out.push({ k: 'cyl', x: s.x, y: s.y, r: s.r }); }
-      else if (s.kind === 'capsule') { if (Math.min(s.a.z, s.b.z) < 1.5) out.push({ k: 'box', x: (s.a.x + s.b.x) / 2, y: (s.a.y + s.b.y) / 2, hx: Math.abs(s.a.x - s.b.x) / 2 + s.r, hy: Math.abs(s.a.y - s.b.y) / 2 + s.r }); }
-    });
-    return out;
-  }
-  function blocked(x, y, fp, m) {
-    if (!inPlay(x, y)) return true;
-    const R = ROOM, G = GARDEN;
-    if (y < R.y1 && (x < R.x0 + m || x > R.x1 - m || y < R.y0 + m)) return true;
-    if (y >= R.y1 && y <= G.y1 && (x < G.x0 + m || x > G.x1 - m || (y > G.y1 - m && (x < GATE.x0 + m || x > GATE.x1 - m)))) return true;
-    if (y > G.y1 && (x < LOT.x0 + m || x > LOT.x1 - m || y > LOT.y1 - m || (y < G.y1 + m && (x < GATE.x0 + m || x > GATE.x1 - m)))) return true;
-    if (Math.abs(y - R.y1) < m && (x < DOOR.x0 + m || x > DOOR.x1 - m)) return true;
-    for (const f of fp) {
-      if (f.k === 'box' && Math.abs(x - f.x) < f.hx + m && Math.abs(y - f.y) < f.hy + m) return true;
-      if (f.k === 'cyl' && Math.hypot(x - f.x, y - f.y) < f.r + m) return true;
-    }
-    return false;
-  }
-  function fixLie(x, y, activeHole, prev) {
-    const fp = footprints(activeHole), m = 0.4;
-    if (!inPlay(x, y) && prev) return { x: prev.x, y: prev.y, moved: true, ob: true };
-    let res = null;
-    if (!blocked(x, y, fp, m)) res = { x, y, moved: false };
-    else {
-      for (let r = 0.25; r < 6 && !res; r += 0.25) for (let k = 0; k < 24; k++) {
-        const a = k / 24 * Math.PI * 2, nx = x + Math.cos(a) * r, ny = y + Math.sin(a) * r;
-        if (!blocked(nx, ny, fp, m)) { res = { x: nx, y: ny, moved: true }; break; }
-      }
-      if (!res) return prev ? { x: prev.x, y: prev.y, moved: true } : { x, y, moved: false };
-    }
-    // relief from the bank board: a lie tucked behind it (the board between you and the basket) slides around
-    // the basket, same distance, to the nearest side with a look at the chains
-    const h = HOLES[activeHole], bk = h.basket, b = h.backstop, d0 = Math.hypot(res.x - bk.x, res.y - bk.y);
-    const hx = (b.kind === 'gong' ? b.r : b.hx) + 0.3, hy = (b.kind === 'gong' ? b.t : b.hy) + 0.3;
-    const hides = (px, py) => { for (let i = 1; i < 20; i++) { const k = i / 20, qx = px + (bk.x - px) * k, qy = py + (bk.y - py) * k; if (Math.abs(qx - b.x) < hx && Math.abs(qy - b.y) < hy) return true; } return false; };
-    if (d0 < 9 && d0 > 0.3 && hides(res.x, res.y)) {
-      const a0 = Math.atan2(res.y - bk.y, res.x - bk.x);
-      for (let da = 0.08; da < 3.0; da += 0.08) for (const sg of [1, -1]) {
-        const a = a0 + sg * da, nx = bk.x + Math.cos(a) * d0, ny = bk.y + Math.sin(a) * d0;
-        if (!hides(nx, ny) && !blocked(nx, ny, fp, m)) return { x: nx, y: ny, moved: true, relief: true };
-      }
-    }
-    // relief from being pinned against something big (the silo, the box truck, a kettle, a fermenter): a lie tucked
-    // within a couple of metres of it, with it square in the way, slides around it (same distance to the basket)
-    // just far enough to see past its edge. Lies farther back play it as it lies.
-    const big = [{ k: 'c', x: SILO.x, y: SILO.y, r: SILO.r }, { k: 'b', x: BOX_TRUCK.x, y: BOX_TRUCK.y + 2.3, hx: BOX_TRUCK.hx, hy: BOX_TRUCK.hy + 2.3 }]
-      .concat(KETTLES.map(q => ({ k: 'c', x: q.x, y: q.y, r: q.r }))).concat(FERMENTERS.map(q => ({ k: 'c', x: q.x, y: q.y, r: q.r })));
-    const gap = (o, px, py) => o.k === 'c' ? Math.hypot(px - o.x, py - o.y) - o.r : Math.max(Math.abs(px - o.x) - o.hx, Math.abs(py - o.y) - o.hy);
-    const inWay = (o, px, py) => { for (let i = 1; i < 24; i++) { const k = i / 24, qx = px + (bk.x - px) * k, qy = py + (bk.y - py) * k; if (gap(o, qx, qy) < 0.35) return true; } return false; };
-    for (const o of big) {
-      if (gap(o, res.x, res.y) > 2.2 || !inWay(o, res.x, res.y)) continue;
-      const a0 = Math.atan2(res.y - bk.y, res.x - bk.x);
-      for (let da = 0.03; da < 1.2; da += 0.03) for (const sg of [1, -1]) {
-        const a = a0 + sg * da, nx = bk.x + Math.cos(a) * d0, ny = bk.y + Math.sin(a) * d0;
-        if (Math.hypot(nx - res.x, ny - res.y) > 5) break;
-        if (!inWay(o, nx, ny) && !blocked(nx, ny, fp, m)) return { x: nx, y: ny, moved: true, relief: true };
-      }
-    }
-    return res;
-  }
+  /* ---------- the venue's own trick reads, on top of the course's makes, banks, skips and near misses ---------- */
+  const tricks = {
+    start(o) { return { overStack: false, overKegs: false, thread: false, under: false, underTruck: false, startInside: o.y < ROOM.y1 }; },
+    // passes: over the barrels / kegs, through the door, under the oak, under the box truck (s in world metres)
+    sample(f, s) {
+      if (Math.abs(s.y - STACK.y) < STACK.len / 2 && Math.abs(s.x - STACK.x) < 1.05 && s.z > 1.3 && s.z < 2.8) f.overStack = true;
+      if (Math.abs(s.y - 22.6) < 0.3 && s.x > -1.45 && s.x < 0.4 && s.z > 1.25 && s.z < 2.8) f.overKegs = true;
+      if (f.startInside && Math.abs(s.y - ROOM.y1) < 0.2 && s.x > DOOR.x0 && s.x < DOOR.x1 && s.z > 0.08) f.thread = true;
+      if (Math.hypot(s.x - OAK.x, s.y - OAK.y) < 2.6 && s.z < 2.6 && s.z > 0.1) f.under = true;
+      if (Math.abs(s.x - BOX_TRUCK.x) < BOX_TRUCK.hx && Math.abs(s.y - BOX_TRUCK.y) < BOX_TRUCK.hy && s.z < BOX_TRUCK.z0) f.underTruck = true;
+    },
+    make(f, k) {
+      const hitStack = k.bounces.some(e => e.name === 'Barrel stack'), hitKegs = k.bounces.some(e => e.name === 'Keg pyramid'), PTS = k.PTS;
+      if (f.overStack && !hitStack) k.award('over', 'OVER THE BARRELS', PTS.over, 'bonus', true);
+      if (f.overKegs && !hitKegs) k.award('overkegs', 'OVER THE KEGS', PTS.over, 'bonus', true);
+      if (f.thread) k.award('thread', 'THREAD THE DOOR', PTS.thread, 'bonus', true);
+      if (f.under) k.award('under', 'UNDER THE OAK', PTS.under, 'bonus', true);
+      if (f.underTruck) k.award('undertruck', 'UNDER THE TRUCK!', PTS.thread, 'bonus', true);
+    },
+    miss(f, k) {
+      if (f.thread) k.award('thread', 'THREAD THE DOOR', Math.round(k.PTS.thread / 2));
+      if (f.underTruck) k.award('undertruck', 'UNDER THE TRUCK', Math.round(k.PTS.thread / 2));
+    },
+    // things you hit, make or miss
+    hits(f, k) {
+      const b = k.bounces;
+      if (b.some(e => /kettle/i.test(e.name || ''))) k.award('bwong', 'BWONG!', 200);
+      if (b.some(e => e.name === 'Gong') && !k.out.some(a => a.key === 'bigbank')) k.award('dong', 'DONG!', 500);
+      if (b.some(e => e.name === 'Table' || e.name === 'Bar' || e.name === 'Picnic table')) k.award('cheers', 'CHEERS!', k.PTS.cheers);
+      if (b.some(e => e.name === 'Food truck')) k.award('truck', 'TACO TRUCK!', 250);
+      if (b.some(e => e.name === 'Fire pit')) k.award('pit', 'HOT STUFF', 250);
+      if (b.some(e => e.name === 'Umbrella')) k.award('umbrella', 'UMBRELLA BOUNCE', 250);
+    },
+  };
 
-  /* ---------- reading a throw for points ---------- */
-  const PTS = { make: 1000, bank: 1500, bigBank: 2000, skipIn: 2000, over: 800, thread: 1000, under: 800, kiss: 300, hung: 500, ceiling: 300,
-    pair: 1500, chainout: 250, spit: 300, band: 150, pole: 200, cage: 100, pinball: 150, wall: 50, roller: 20, skip: 75, cheers: 300,
-    ace: 10000, downtown: 40, parked: 300, circle: 100 };
-  const BIG_BANKS = { Gong: 'RING THE GONG', 'Keg wall': 'KEG BANK', 'Crate tower': 'CRATE BANK', 'Grain sacks': 'SACK BANK', 'Pallet wall': 'PALLET BANK', 'Loading dock': 'DOCK BANK' };
-  function readThrow(rec, mode, stroke) {
-    const h = HOLES[rec.hole], ev = rec.events || [], out = [], c = rec.catchResult || { outcome: 'none' }, o = rec.origin;
-    const made = c.outcome === 'made';
-    const madeT = made ? (ev.find(e => e.type === 'made') || { t: 1e9 }).t : 1e9;
-    const before = e => e.t < madeT;
-    const bounces = ev.filter(e => e.type === 'bounce'), floor = ev.filter(e => e.type === 'skip' || e.type === 'hop');
-    const award = (key, label, pts, kind, trick) => out.push({ key, label, pts, kind: kind || 'bonus', trick: !!trick });
-    const W = s => ({ x: s.x * FT + o.x, y: s.y * FT + o.y, z: s.z * FT });
-    // passes: over the barrels / kegs, through the door, under the oak
-    let overStack = false, overKegs = false, thread = false, under = false, underTruck = false, aroundSilo = false, startInside = o.y < ROOM.y1;
-    for (const s0 of rec.samples || []) {
-      if (s0.landed) break;
-      const s = W(s0);
-      if (Math.abs(s.y - STACK.y) < STACK.len / 2 && Math.abs(s.x - STACK.x) < 1.05 && s.z > 1.3 && s.z < 2.8) overStack = true;
-      if (Math.abs(s.y - 22.6) < 0.3 && s.x > -1.45 && s.x < 0.4 && s.z > 1.25 && s.z < 2.8) overKegs = true;
-      if (startInside && Math.abs(s.y - ROOM.y1) < 0.2 && s.x > DOOR.x0 && s.x < DOOR.x1 && s.z > 0.08) thread = true;
-      if (Math.hypot(s.x - OAK.x, s.y - OAK.y) < 2.6 && s.z < 2.6 && s.z > 0.1) under = true;
-      if (Math.abs(s.x - BOX_TRUCK.x) < BOX_TRUCK.hx && Math.abs(s.y - BOX_TRUCK.y) < BOX_TRUCK.hy && s.z < BOX_TRUCK.z0) underTruck = true;
-    }
-    const hitStack = bounces.some(e => e.name === 'Barrel stack'), hitKegs = bounces.some(e => e.name === 'Keg pyramid');
-    const brushed = ev.some(e => e.type === 'brush'), hung = ev.some(e => e.type === 'hung');
-    const ceiling = bounces.some(e => e.name === 'Ceiling');
-    if (made) {
-      if (mode === 'pitch' && stroke === 1) award('ace', 'ACE!!!', PTS.ace, 'make', true);
-      else award('make', 'CHAAING!', PTS.make, 'make');
-      const bb = bounces.filter(before);
-      const big = bb.find(e => BIG_BANKS[e.name]);
-      if (big) award('bigbank', BIG_BANKS[big.name] + '!', PTS.bigBank, 'bonus', true);
-      else if (bb.length) award('bank', 'BANK OFF THE ' + String(bb[bb.length - 1].name || 'WALL').toUpperCase() + '!', PTS.bank, 'bonus', true);
-      if (ceiling) award('ceilbank', 'CEILING SHOT', PTS.ceiling, 'bonus', true);
-      if (floor.some(before)) award('skipIn', 'SKIP IN!', PTS.skipIn, 'bonus', true);
-      if (overStack && !hitStack) award('over', 'OVER THE BARRELS', PTS.over, 'bonus', true);
-      if (overKegs && !hitKegs) award('overkegs', 'OVER THE KEGS', PTS.over, 'bonus', true);
-      if (thread) award('thread', 'THREAD THE DOOR', PTS.thread, 'bonus', true);
-      if (under) award('under', 'UNDER THE OAK', PTS.under, 'bonus', true);
-      if (underTruck) award('undertruck', 'UNDER THE TRUCK!', PTS.thread, 'bonus', true);
-      if (brushed) award('kiss', 'TREE KISS', PTS.kiss, 'bonus', true);
-      const d = Math.hypot(h.basket.x - o.x, h.basket.y - o.y) / FT;
-      if (d > 34) award('downtown', 'DOWNTOWN ' + Math.round(d) + ' FT', Math.round(PTS.downtown * d), 'bonus', d > 60);
-    } else {
-      const map = { chainout: ['CHAIN OUT', PTS.chainout], spit: ['SPIT THROUGH!', PTS.spit], band: ['RIM SHOT', PTS.band], pole: ['CLANG!', PTS.pole], cage: ['CAGE RATTLE', PTS.cage] };
-      if (map[c.outcome]) award(c.outcome, map[c.outcome][0], map[c.outcome][1], 'near');
-      if (bounces.length >= 2) award('pinball', 'PINBALL x' + bounces.length, PTS.pinball * bounces.length);
-      else if (bounces.some(e => e.name === 'Wall')) award('wall', 'WALL BALL', PTS.wall);
-      if (ceiling) award('ceiling', 'CEILING SHOT', PTS.ceiling);
-      const roll = ev.find(e => e.type === 'roll');
-      if (roll) { const rx = roll.x * FT + o.x, ry = roll.y * FT + o.y, d = Math.hypot(rec.rest.x - rx, rec.rest.y - ry); if (d > 1) award('roller', 'ROLLER ' + Math.round(d / FT) + ' FT', Math.round(PTS.roller * d / FT)); }
-      if (floor.length >= 2) award('skips', 'SKIPPER x' + floor.length, PTS.skip * floor.length);
-      if (hung) award('hung', 'STUCK IN THE TREE!', PTS.hung);
-      else if (brushed) award('kiss', 'TREE KISS', PTS.kiss);
-      if (thread) award('thread', 'THREAD THE DOOR', Math.round(PTS.thread / 2));
-      if (underTruck) award('undertruck', 'UNDER THE TRUCK', Math.round(PTS.thread / 2));
-      if (mode === 'pitch') {
-        const d = Math.hypot(rec.rest.x - h.basket.x, rec.rest.y - h.basket.y);
-        if (d < 0.9) award('parked', 'PARKED IT', PTS.parked);
-        else if (d < 3) award('circle', 'TAP-IN RANGE', PTS.circle);
-      }
-    }
-    if (bounces.some(e => /kettle/i.test(e.name || ''))) award('bwong', 'BWONG!', 200);
-    if (bounces.some(e => e.name === 'Gong') && !out.some(a => a.key === 'bigbank')) award('dong', 'DONG!', 500);
-    if (bounces.some(e => e.name === 'Table' || e.name === 'Bar' || e.name === 'Picnic table')) award('cheers', 'CHEERS!', PTS.cheers);
-    if (bounces.some(e => e.name === 'Food truck')) award('truck', 'TACO TRUCK!', 250);
-    if (bounces.some(e => e.name === 'Fire pit')) award('pit', 'HOT STUFF', 250);
-    if (bounces.some(e => e.name === 'Umbrella')) award('umbrella', 'UMBRELLA BOUNCE', 250);
-    return { made, outcome: c.outcome, awards: out, tricks: out.filter(a => a.trick).length };
-  }
-  function scoreName(strokes, par) {
-    if (strokes === 1) return 'ACE';
-    const d = strokes - par;
-    return d <= -2 ? 'EAGLE' : d === -1 ? 'BIRDIE' : d === 0 ? 'PAR' : d === 1 ? 'BOGEY' : d === 2 ? 'DOUBLE BOGEY' : '+' + d;
-  }
-  const HOLE_PTS = { ACE: 10000, EAGLE: 5000, BIRDIE: 3000, PAR: 1500, BOGEY: 500 };
-
-  return { FT, ROOM, DOOR, GARDEN, LOT, GATE, SILO, BOX_TRUCK, DOCK, PALLETS, DUMPSTER, FORKLIFT, JENGA, LOT_POLES, POSTS_X, POSTS_Y, KETTLES, FERMENTERS, BAR, TABLES, STACK, STACK_BARRELS, KEGS, UPRIGHT_BARRELS,
-    OAK, PICNIC, UMBRELLAS, FIREPIT, TRUCK, PLANTERS, LIGHT_POLES, HOLES, DISCS, PTS, HOLE_PTS, BANK, CHAIN_Z,
-    installFloor, surfaceAt, inPlay, worldSolids, solidsFrom, baseParams, mphFor, solve, defaultTarget, throwIt, fixLie, readThrow, scoreName };
+  return Venues.register({
+    id: 'taproom', name: 'THE TAPROOM', FT,
+    layout: { ROOM, DOOR, GARDEN, LOT, GATE, SILO, BOX_TRUCK, DOCK, PALLETS, DUMPSTER, FORKLIFT, JENGA, LOT_POLES, POSTS_X, POSTS_Y, KETTLES, FERMENTERS, BAR, TABLES, STACK, STACK_BARRELS, KEGS, UPRIGHT_BARRELS,
+      OAK, PICNIC, UMBRELLAS, FIREPIT, TRUCK, PLANTERS, LIGHT_POLES },
+    HOLES, SURFACES, surfaceAt, inPlay, nearEdge, solids, bigObstacles: BIG, defaultTarget,
+    inside, ceilingFor, airCap, introVia, cam: { blockers: CAM_BLOCK, clamp: camClamp, underRoof, roofZ: ROOM.h }, tricks,
+  });
 });
 
 /* =====================================================================
-   PUTT LEAGUE · BREWERY · 3D SCENE (three.js r128)
-   Cel-shaded: toon materials with three light bands, ink outlines (inverted hull on smoothed
-   normals), canvas-painted textures. Engine frame (x right, y downrange, z up, metres) maps to
-   three.js as (x, z, -y). Built from the same numbers as course.js.
+   PUTT LEAGUE · VENUE · THE TAPROOM · 3D SCENE (three.js r128, browser only)
+   The taproom (brick, timber, copper kettles, the bar), the beer garden and the back lot, built
+   with the scene kit (scene.js: toon materials, ink outlines, painted panels, merged batches) from
+   the numbers in taproom.js. Also the bonus targets the flyover calls out and the game makes glow.
    ===================================================================== */
-var VenueScene = (function () {
+(function (Venues) {
   'use strict';
-  var T = THREE, C = Course;
-  var INK = new T.Color(0x1d130c);
-  function W(x, y, z) { return new T.Vector3(x, z, -y); }
+  var T, C, W, toon, glow, outline, canvas, rnd, TEX, paintPanel, signBoard, label, cylGeom, latheGeom, mBox, at, GBOX, plane, dressHoles;
+  function bind(K) { T = K.T; C = K.C; W = K.W; toon = K.toon; glow = K.glow; outline = K.outline; canvas = K.canvas; rnd = K.rnd; TEX = K.TEX; paintPanel = K.paintPanel; signBoard = K.signBoard; label = K.label; cylGeom = K.cylGeom; latheGeom = K.latheGeom; mBox = K.mBox; at = K.at; GBOX = K.GBOX; plane = K.plane; dressHoles = K.dressHoles; }
 
-  /* ---------- toon materials ---------- */
-  var grad = (function () {
-    var d = new Uint8Array([90, 90, 90, 170, 170, 170, 255, 255, 255]);
-    var t = new T.DataTexture(d, 3, 1, T.RGBFormat); t.minFilter = t.magFilter = T.NearestFilter; t.generateMipmaps = false; t.needsUpdate = true; return t;
-  })();
-  var matCache = {};
-  function toon(color, o) {
-    o = o || {};
-    var key = color + '|' + (o.map ? o.map.uuid : '') + '|' + (o.emissive || '') + '|' + (o.side || '');
-    if (matCache[key]) return matCache[key];
-    var m = new T.MeshToonMaterial({ color: color, gradientMap: grad, map: o.map || null, emissive: o.emissive || 0x000000, side: o.side || T.FrontSide });
-    matCache[key] = m; return m;
-  }
-  function glow(color) { return new T.MeshBasicMaterial({ color: color }); }
-  var outlineMats = {};
-  function outlineMat(thick) {
-    var k = thick.toFixed(3); if (outlineMats[k]) return outlineMats[k];
-    outlineMats[k] = new T.ShaderMaterial({
-      uniforms: { c: { value: INK }, t: { value: thick } },
-      vertexShader: 'attribute vec3 oNormal; uniform float t; void main(){ vec4 mv = modelViewMatrix * vec4(position + oNormal * t, 1.0); gl_Position = projectionMatrix * mv; }',
-      fragmentShader: 'uniform vec3 c; void main(){ gl_FragColor = vec4(c, 1.0); }',
-      side: T.BackSide
-    });
-    return outlineMats[k];
-  }
-  // averaged normals per position, so the hull closes over hard edges (boxes get a solid ink line)
-  function smoothNormals(g) {
-    var p = g.attributes.position, n = g.attributes.normal, map = {}, out = new Float32Array(p.count * 3), i, k;
-    for (i = 0; i < p.count; i++) {
-      k = Math.round(p.getX(i) * 1000) + ',' + Math.round(p.getY(i) * 1000) + ',' + Math.round(p.getZ(i) * 1000);
-      var a = map[k] || (map[k] = [0, 0, 0]); a[0] += n.getX(i); a[1] += n.getY(i); a[2] += n.getZ(i);
-    }
-    for (i = 0; i < p.count; i++) {
-      k = Math.round(p.getX(i) * 1000) + ',' + Math.round(p.getY(i) * 1000) + ',' + Math.round(p.getZ(i) * 1000);
-      var v = map[k], l = Math.hypot(v[0], v[1], v[2]) || 1; out[i * 3] = v[0] / l; out[i * 3 + 1] = v[1] / l; out[i * 3 + 2] = v[2] / l;
-    }
-    g.setAttribute('oNormal', new T.BufferAttribute(out, 3));
-  }
-  function outline(mesh, thick) {
-    if (!mesh.geometry.attributes.oNormal) smoothNormals(mesh.geometry);
-    var o = new T.Mesh(mesh.geometry, outlineMat(thick == null ? 0.02 : thick));
-    o.matrixAutoUpdate = false; mesh.add(o); o.updateMatrix();
-    return mesh;
-  }
-
-  /* ---------- static geometry is merged per material: few draw calls on a phone ---------- */
-  function Batch(parent) { this.parent = parent; this.groups = {}; }
-  Batch.prototype.add = function (geom, mat, matrix, ink) {
-    var key = mat.uuid + (ink ? '|' + ink : '');
-    var g = geom.index ? geom.toNonIndexed() : geom.clone();
-    if (!g.attributes.uv) g.setAttribute('uv', new T.BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2));
-    g.applyMatrix4(matrix);
-    (this.groups[key] || (this.groups[key] = { mat: mat, ink: ink, list: [] })).list.push(g);
-  };
-  Batch.prototype.build = function () {
-    var meshes = [];
-    for (var key in this.groups) {
-      var G = this.groups[key], n = 0, i;
-      G.list.forEach(function (g) { n += g.attributes.position.count; });
-      var pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), uv = new Float32Array(n * 2), o = 0;
-      G.list.forEach(function (g) { pos.set(g.attributes.position.array, o * 3); nor.set(g.attributes.normal.array, o * 3); uv.set(g.attributes.uv.array, o * 2); o += g.attributes.position.count; });
-      var geo = new T.BufferGeometry();
-      geo.setAttribute('position', new T.BufferAttribute(pos, 3)); geo.setAttribute('normal', new T.BufferAttribute(nor, 3)); geo.setAttribute('uv', new T.BufferAttribute(uv, 2));
-      var m = new T.Mesh(geo, G.mat); m.matrixAutoUpdate = false;
-      if (G.ink) outline(m, G.ink);
-      this.parent.add(m); meshes.push(m);
-    }
-    return meshes;
-  };
-
-  /* ---------- painted textures ---------- */
-  function canvas(w, h, draw) {
-    var c = document.createElement('canvas'); c.width = w; c.height = h; var g = c.getContext('2d'); draw(g, w, h);
-    var t = new T.CanvasTexture(c); t.wrapS = t.wrapT = T.RepeatWrapping; t.anisotropy = 4; return t;
-  }
-  function rnd(seed) { var s = seed || 1; return function () { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; }; }
-  var TEX = {};
-  function makeTextures() {
-    var r = rnd(7);
-    TEX.brick = canvas(512, 512, function (g, w, h) {               // 1.92 m square: 8 bricks x 24 rows
-      g.fillStyle = '#5c3a2c'; g.fillRect(0, 0, w, h);
-      var bw = w / 8, bh = h / 24;
-      for (var row = 0; row < 24; row++) for (var i = -1; i < 9; i++) {
-        var x = i * bw + (row % 2 ? bw / 2 : 0), y = row * bh, v = r();
-        g.fillStyle = v < 0.33 ? '#9c4a32' : v < 0.66 ? '#a9573a' : '#8a3f2b';
-        g.fillRect(x + 3, y + 3, bw - 6, bh - 6);
-        g.fillStyle = 'rgba(255,220,180,0.12)'; g.fillRect(x + 3, y + 3, bw - 6, 3);
-      }
-      g.fillStyle = 'rgba(29,19,12,0.35)'; for (var k = 0; k < 9; k++) g.fillRect(0, k * bh * 3 - 1, w, 2);
-    });
-    TEX.planks = canvas(512, 512, function (g, w, h) {              // 1.2 m wide x 2.4 m long tile, planks run downrange
-      var pw = w / 6;
-      for (var i = 0; i < 6; i++) {
-        var off = (i * 37 % 5) / 5 * h;
-        for (var j = -1; j < 2; j++) {
-          var y = off + j * h, v = r();
-          g.fillStyle = v < 0.33 ? '#b0703d' : v < 0.66 ? '#a4652f' : '#bd7c48';
-          g.fillRect(i * pw, y, pw, h);
-          g.strokeStyle = 'rgba(80,40,15,0.25)'; g.lineWidth = 2;
-          for (var s = 0; s < 3; s++) { var gx = i * pw + 8 + r() * (pw - 16); g.beginPath(); g.moveTo(gx, y + 10); g.bezierCurveTo(gx + 6, y + h * 0.3, gx - 6, y + h * 0.6, gx + 3, y + h - 10); g.stroke(); }
-          g.fillStyle = '#3a2112'; g.fillRect(i * pw, y, pw, 3);
-        }
-        g.fillStyle = '#3a2112'; g.fillRect(i * pw, 0, 3, h);
-      }
-      g.fillStyle = 'rgba(255,240,210,0.10)'; g.fillRect(0, 0, w, h * 0.04);
-    });
-    TEX.ceiling = canvas(256, 256, function (g, w, h) { g.fillStyle = '#2a1d14'; g.fillRect(0, 0, w, h); g.fillStyle = '#1d140d'; for (var i = 0; i < 8; i++) g.fillRect(0, i * h / 8, w, 3); });
-    TEX.tile = canvas(256, 256, function (g, w, h) { var s = w / 8; for (var i = 0; i < 8; i++) for (var j = 0; j < 8; j++) { g.fillStyle = (i + j) % 2 ? '#e8e0cc' : '#1f5c9a'; g.fillRect(i * s, j * s, s, s); } });
-    TEX.stack = canvas(256, 256, function (g, w, h) { g.fillStyle = '#7b4a26'; g.fillRect(0, 0, w, h); for (var i = 0; i < 12; i++) { g.fillStyle = i % 2 ? '#8d5730' : '#6f4021'; g.fillRect(i * w / 12, 0, w / 12 - 2, h); } });
-  }
-
-  // a sign or poster painted on canvas, returned as a flat panel (plane) facing +normal
-  function paintPanel(w, h, px, draw, emissive) {
-    var tex = canvas(Math.round(px), Math.round(px * h / w), draw); tex.wrapS = tex.wrapT = T.ClampToEdgeWrapping;
-    var m = emissive ? new T.MeshBasicMaterial({ map: tex, transparent: true }) : new T.MeshToonMaterial({ map: tex, gradientMap: grad, transparent: true });
-    return new T.Mesh(new T.PlaneGeometry(w, h), m);
-  }
-  // a bank-board sign: small, lit (so it pops in any light), colored rim, text sized to fit so nothing clips
-  function signBoard(text, w, h, rim, sub) {
-    return paintPanel(w, h, 512, function (g, cw, ch) {
-      var r = ch * 0.22; g.fillStyle = rim || '#ffc93c'; roundRect(g, 0, 0, cw, ch, r); g.fill();
-      g.fillStyle = '#1d130c'; roundRect(g, ch * 0.07, ch * 0.07, cw - ch * 0.14, ch - ch * 0.14, r * 0.7); g.fill();
-      var fs = ch * (sub ? 0.46 : 0.6), fam = '"Bangers", Impact, "Arial Black", sans-serif';
-      g.font = '900 ' + fs + 'px ' + fam; var tw = g.measureText(text).width, maxW = cw * 0.86; if (tw > maxW) fs *= maxW / tw;
-      label(g, text, cw / 2, sub ? ch * 0.4 : ch * 0.53, fs, '#ffc93c', { stroke: Math.max(3, fs * 0.12), glow: 'rgba(255,201,60,0.55)', glowBlur: fs * 0.35 });
-      if (sub) { var f2 = ch * 0.2; g.font = '900 ' + f2 + 'px ' + fam; var t2 = g.measureText(sub).width; if (t2 > maxW) f2 *= maxW / t2; label(g, sub, cw / 2, ch * 0.76, f2, '#fff3df', {}); }
-    }, true);
-  }
-  function roundRect(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
-  function label(g, text, x, y, size, fill, opts) {
-    opts = opts || {};
-    g.font = (opts.weight || '900') + ' ' + size + 'px ' + (opts.font || '"Bangers", Impact, "Arial Black", sans-serif');
-    g.textAlign = opts.align || 'center'; g.textBaseline = 'middle';
-    if (opts.stroke) { g.lineWidth = opts.stroke; g.strokeStyle = opts.strokeColor || '#1d130c'; g.lineJoin = 'round'; g.strokeText(text, x, y); }
-    if (opts.glow) { g.shadowColor = opts.glow; g.shadowBlur = opts.glowBlur || 18; }
-    g.fillStyle = fill; g.fillText(text, x, y); g.shadowBlur = 0;
-  }
   // place a panel flat on a wall: wall = 'L' (x0), 'R' (x1), 'B' (back y1), 'F' (front y0); u along the wall, z height
   function onWall(scene, mesh, wall, u, z, lift) {
     var R = C.ROOM, d = lift || 0.03;
@@ -2629,75 +2273,12 @@ var VenueScene = (function () {
     scene.add(mesh); return mesh;
   }
 
-  /* ---------- builders (engine frame in, three.js out) ---------- */
-  /* ---------- extra paint for the garden ---------- */
-  function gardenTextures() {
-    var r = rnd(11);
-    TEX.grass = canvas(256, 256, function (g, w, h) {
-      g.fillStyle = '#4f8a3a'; g.fillRect(0, 0, w, h);
-      for (var i = 0; i < 900; i++) { var x = r() * w, y = r() * h; g.strokeStyle = r() < 0.5 ? '#5d9c44' : '#3f7430'; g.lineWidth = 2; g.beginPath(); g.moveTo(x, y); g.lineTo(x + (r() - 0.5) * 4, y - 6 - r() * 5); g.stroke(); }
-    });
-    TEX.pavers = canvas(256, 256, function (g, w, h) {
-      g.fillStyle = '#4a4038'; g.fillRect(0, 0, w, h); var s = w / 4;
-      for (var i = 0; i < 4; i++) for (var j = 0; j < 4; j++) { var v = r(); g.fillStyle = v < 0.33 ? '#9b8f80' : v < 0.66 ? '#a89a88' : '#8d8274'; g.fillRect(i * s + 3 + (j % 2 ? s / 2 : 0) % s, j * s + 3, s - 6, s - 6); }
-    });
-    TEX.gravel = canvas(256, 256, function (g, w, h) { g.fillStyle = '#9b8f7c'; g.fillRect(0, 0, w, h); for (var i = 0; i < 1400; i++) { g.fillStyle = ['#b9ad98', '#7d7262', '#c9bfae', '#6b6153'][i % 4]; g.beginPath(); g.arc(r() * w, r() * h, 1 + r() * 2.2, 0, 7); g.fill(); } });
-    TEX.fence = canvas(256, 128, function (g, w, h) { var pw = w / 8; for (var i = 0; i < 8; i++) { g.fillStyle = i % 2 ? '#8a5a33' : '#7a4d2a'; g.fillRect(i * pw, 0, pw, h); g.fillStyle = '#3a2112'; g.fillRect(i * pw, 0, 3, h); } g.fillStyle = 'rgba(0,0,0,0.25)'; g.fillRect(0, h * 0.2, w, 6); g.fillRect(0, h * 0.75, w, 6); });
-  }
-
-  /* ---------- builders (engine frame in, three.js out) ---------- */
-  function cylGeom(r, h, seg, r2) { var g = new T.CylinderGeometry(r2 == null ? r : r2, r, h, seg || 24); g.translate(0, h / 2, 0); return g; }
-  function latheGeom(prof, seg) { return new T.LatheGeometry(prof.map(function (p) { return new T.Vector2(p[0], p[1]); }), seg || 40); }
-  function mBox(cx, cy, z0, sx, sy, sz, ry) {
-    var m = new T.Matrix4().makeTranslation(cx, z0 + sz / 2, -cy);
-    if (ry) m.multiply(new T.Matrix4().makeRotationY(ry));
-    return m.multiply(new T.Matrix4().makeScale(sx, sz, sy));
-  }
-  function at(x, y, z) { return new T.Matrix4().makeTranslation(x, z || 0, -y); }
-  var GBOX = new T.BoxGeometry(1, 1, 1);
-  function plane(w, h, tex, rep, color) {
-    var t = tex.clone(); t.needsUpdate = true; t.repeat.set(rep[0], rep[1]);
-    return new T.Mesh(new T.PlaneGeometry(w, h), toon(color || 0xffffff, { map: t }));
-  }
-
-  /* ---------- a basket, with chains that the engine can drive ---------- */
-  function makeBasket(scene, hx, hy) {
-    var S = FlightlineBasket.SPEC, chainMat = toon(0xd5dbe0), dark = toon(0x2b1b12);
-    var basket = new T.Group(); basket.position.copy(W(hx, hy, 0)); scene.add(basket);
-    function part(geom, mat, z, ink) { var m = new T.Mesh(geom, mat); m.position.y = z; if (ink) outline(m, ink); basket.add(m); return m; }
-    part(cylGeom(S.poleR, S.poleTop, 12), chainMat, 0, 0.01);
-    part(cylGeom(0.25, 0.03, 28), dark, 0, 0.01);
-    part(latheGeom([[0.04, 0], [S.trayR - 0.06, 0], [S.trayR, S.trayDepth], [S.trayR + 0.01, S.trayDepth + 0.01]], 36), toon(0xbfc7cc, { side: T.DoubleSide }), S.trayBottomZ, 0.012);
-    part(new T.CylinderGeometry(S.bandR, S.bandR, S.bandH, 36, 1, true), new T.MeshToonMaterial({ color: 0xF2A13B, gradientMap: grad, side: T.DoubleSide }), S.bandBottomZ + S.bandH / 2, 0.012);
-    part(new T.CylinderGeometry(0.06, S.bandR, S.lidRise, 24), toon(0xF2A13B), S.bandTopZ + S.lidRise / 2, 0.01);
-    for (var cg = 0; cg < 14; cg++) { var a = cg / 14 * Math.PI * 2, rod = new T.Mesh(cylGeom(0.006, S.trayDepth, 4), chainMat); rod.position.set(Math.cos(a) * (S.trayR - 0.01), S.trayBottomZ, Math.sin(a) * (S.trayR - 0.01)); basket.add(rod); }
-    var defs = FlightlineBasket.strandDefs(S), P = S.segments + 1, nStr = defs.length;
-    var cpos = new Float32Array(nStr * S.segments * 2 * 3), cgeo = new T.BufferGeometry(); cgeo.setAttribute('position', new T.BufferAttribute(cpos, 3));
-    var ch = new T.LineSegments(cgeo, new T.LineBasicMaterial({ color: 0xe9eef2 })); ch.frustumCulled = false; basket.add(ch);
-    var chi = new T.LineSegments(cgeo, new T.LineBasicMaterial({ color: 0x1d130c, transparent: true, opacity: 0.55 })); chi.frustumCulled = false; chi.position.set(0.004, -0.004, 0); basket.add(chi);
-    // a glow ring that lights up when this is the hole being played
-    var halo = new T.Mesh(new T.RingGeometry(0.42, 0.52, 40), new T.MeshBasicMaterial({ color: 0xffc93c, transparent: true, opacity: 0.0, side: T.DoubleSide, depthWrite: false }));
-    halo.rotation.x = -Math.PI / 2; halo.position.y = 0.012; basket.add(halo);
-    function set(x) {
-      var o = 0;
-      for (var s = 0; s < nStr; s++) for (var k = 0; k < S.segments; k++) { var a = (s * P + k) * 3, b = a + 3; cpos[o++] = x[a]; cpos[o++] = x[a + 2]; cpos[o++] = -x[a + 1]; cpos[o++] = x[b]; cpos[o++] = x[b + 2]; cpos[o++] = -x[b + 1]; }
-      cgeo.attributes.position.needsUpdate = true;
-    }
-    set(REST);
-    return { group: basket, setChains: set, halo: halo };
-  }
-  var REST = null;
-
-  /* ---------- the whole venue ---------- */
-  function build() {
-    makeTextures(); gardenTextures();
-    REST = FlightlineBasket.restPose();
-    var scene = new T.Scene(), R = C.ROOM, G = C.GARDEN, D = C.DOOR;
+  /* ---------- the whole venue (the kit made the scene, the static batches and out) ---------- */
+  function buildScene(K, scene, stat, ceilB, out) {
+    bind(K);
+    var R = C.ROOM, G = C.GARDEN, D = C.DOOR, ceiling = out.ceiling;
     scene.background = new T.Color(0x1b1430);
     scene.fog = new T.Fog(0x2a1d2c, 30, 95);
-    var stat = new Batch(scene), ceilB = new Batch(new T.Group());
-    var ceiling = ceilB.parent; scene.add(ceiling);
-    var out = { scene: scene, ceiling: ceiling, anim: [], bulbs: [], baskets: [], icons: {} };
 
     // sky dome: dusk
     var skyTex = canvas(64, 512, function (g, w, h) { var gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#0f1440'); gr.addColorStop(0.35, '#3b2c6e'); gr.addColorStop(0.55, '#a5486e'); gr.addColorStop(0.68, '#f08a4b'); gr.addColorStop(0.75, '#ffc46b'); gr.addColorStop(1, '#ffc46b'); g.fillStyle = gr; g.fillRect(0, 0, w, h); });
@@ -2787,42 +2368,8 @@ var VenueScene = (function () {
     var kegMat = toon(0xc9d1d6);
     C.KEGS.forEach(function (k) { var m = new T.Mesh(latheGeom([[0.001, 0], [0.2, 0], [0.21, 0.04], [0.21, 0.56], [0.2, 0.6], [0.001, 0.6]], 20), kegMat); m.position.copy(W(k.x, k.y, k.z0)); outline(m, 0.012); scene.add(m); var band = new T.Mesh(new T.TorusGeometry(0.212, 0.012, 6, 20), toon(0x1f5c9a)); band.rotation.x = Math.PI / 2; band.position.copy(W(k.x, k.y, k.z0 + 0.3)); scene.add(band); });
 
-    // ---- baskets and their bank boards
-    C.HOLES.forEach(function (h, i) {
-      out.baskets.push(makeBasket(scene, h.basket.x, h.basket.y));
-      var b = h.backstop;
-      if (b.kind === 'gong') {
-        var gong = new T.Mesh(new T.CylinderGeometry(b.r, b.r, b.t * 2, 40), toon(0x9a4f1e)); gong.rotation.x = Math.PI / 2; gong.position.copy(W(b.x, b.y, b.z)); outline(gong, 0.025); scene.add(gong);
-        var face = paintPanel(b.r * 2, b.r * 2, 256, function (g, w) { g.fillStyle = '#b8642a'; g.beginPath(); g.arc(w / 2, w / 2, w / 2 - 2, 0, 7); g.fill(); g.strokeStyle = 'rgba(60,25,5,0.55)'; g.lineWidth = 5; for (var k = 1; k < 5; k++) { g.beginPath(); g.arc(w / 2, w / 2, k * w / 10, 0, 7); g.stroke(); } g.fillStyle = '#d98a3a'; g.beginPath(); g.arc(w / 2, w / 2, w * 0.13, 0, 7); g.fill(); g.fillStyle = 'rgba(255,230,180,0.45)'; g.beginPath(); g.ellipse(w * 0.34, w * 0.3, w * 0.12, w * 0.05, -0.5, 0, 7); g.fill(); label(g, 'DONG', w / 2, w * 0.78, 40, '#3a1a05', {}); });
-        face.position.copy(W(b.x, b.y - b.t - 0.005, b.z)); scene.add(face);
-        [-1, 1].forEach(function (s) { stat.add(GBOX, dark, mBox(b.x + s * (b.r + 0.12), b.y + 0.05, 0, 0.1, 0.1, b.z + b.r + 0.3), 0.012); });
-        stat.add(GBOX, dark, mBox(b.x, b.y + 0.05, b.z + b.r + 0.25, b.r * 2 + 0.34, 0.1, 0.1), 0.012);
-        out.gong = gong; out.gongFace = face;
-      } else if (b.kind === 'kegs') {
-        for (var row = 0; row < 3; row++) for (var c2 = 0; c2 < 4 - (row === 2 ? 1 : 0); c2++) {
-          var kx = b.x - b.hx + 0.24 + c2 * 0.47 + (row === 2 ? 0.23 : 0), m2 = new T.Mesh(cylGeom(0.21, 0.6, 18), kegMat);
-          m2.position.copy(W(kx, b.y, row * 0.62)); outline(m2, 0.012); scene.add(m2);
-        }
-      } else if (b.kind === 'crates') {
-        for (var cr = 0; cr < 4; cr++) { var col = [0xc0392b, 0x2E9C9A, 0xF2A13B, 0x3B86D9][cr]; stat.add(GBOX, toon(col), mBox(b.x + (cr % 2 ? 0.45 : -0.45), b.y, Math.floor(cr / 2) * 0.9, 0.86, b.hy * 2, 0.86), 0.02); }
-        var sign = signBoard('CRATE BANK', 1.15, 0.34); sign.position.copy(W(b.x, b.y - b.hy - 0.02, b.h + 0.3)); scene.add(sign);
-      } else if (b.kind === 'sacks') {
-        // grain sacks: a stacked pyramid of fat burlap bags
-        var sackM = toon(0xd9c08a);
-        [[-0.55, 0, 0], [0, 0, 0], [0.55, 0, 0], [-0.28, 0, 0.5], [0.28, 0, 0.5], [0, 0, 1.0]].forEach(function (q) { var sk = new T.Mesh(new T.SphereGeometry(0.34, 12, 8), sackM); sk.scale.set(1.0, 0.75, 1.25); sk.position.copy(W(b.x + q[0], b.y, 0.26 + q[2])); outline(sk, 0.015); scene.add(sk); });
-        var sgn = signBoard('SACK BANK', 1.1, 0.32); sgn.position.copy(W(b.x, b.y - b.hy - 0.05, b.h + 0.2)); scene.add(sgn);
-      } else if (b.kind === 'pallets') {
-        var palM = toon(0xb98a52), palD = toon(0x7a5530);
-        for (var pr = 0; pr < 9; pr++) { stat.add(GBOX, pr % 3 === 2 ? palD : palM, mBox(b.x, b.y, pr * 0.19, b.hx * 2, b.hy * 2, 0.15), 0.012); }
-        var sgp = signBoard('PALLET BANK', 1.2, 0.32); sgp.rotation.y = Math.PI / 2; sgp.position.copy(W(b.x + b.hx + 0.05, b.y, b.h + 0.2)); scene.add(sgp);
-      }
-      // the Putt tee mats and the Pitch tee pad
-      [['short', 'SHORT', 0x2f6b3a], ['long', 'LONG', 0x2f6b3a], ['tee', 'TEE ' + h.n, 0xa8402a]].forEach(function (t) {
-        var spot = h[t[0]], bearing = Math.atan2(h.basket.x - spot.x, h.basket.y - spot.y);
-        var mat = paintPanel(t[0] === 'tee' ? 1.4 : 1.1, t[0] === 'tee' ? 2.0 : 1.5, 256, function (g, w, hh) { g.fillStyle = '#' + t[2].toString(16).padStart(6, '0'); g.fillRect(0, 0, w, hh); g.strokeStyle = '#fff3df'; g.lineWidth = 10; g.strokeRect(8, 8, w - 16, hh - 16); label(g, t[1], w / 2, hh * 0.82, t[0] === 'tee' ? 40 : 50, '#fff3df', {}); });
-        mat.rotation.x = -Math.PI / 2; mat.rotation.z = -bearing; mat.position.copy(W(spot.x - Math.sin(bearing) * 0.3, spot.y - Math.cos(bearing) * 0.3, 0.01)); scene.add(mat);
-      });
-    });
+    // ---- baskets, their bank boards and the tee mats
+    dressHoles(scene, stat, out);
 
     // ---- lights inside: string lights and pendants
     var bulbMat = glow(0xffc46b); out.bulbMat = bulbMat;
@@ -2856,8 +2403,6 @@ var VenueScene = (function () {
     C.HOLES.forEach(function (h) { var l = new T.PointLight(0xffc98a, 0.9, 8, 1.6); l.position.copy(W(h.basket.x - 0.8, h.basket.y - 1.8, 3.4)); scene.add(l); });
     [[-10, 50], [8, 50], [-8, 68], [6, 72]].forEach(function (p) { var l = new T.PointLight(0xffc46b, 0.7, 16, 1.6); l.position.copy(W(p[0], p[1], 4.0)); scene.add(l); });
 
-    stat.build(); ceilB.build();
-    return out;
   }
 
   /* ---------- decor inside ---------- */
@@ -3053,6 +2598,646 @@ var VenueScene = (function () {
     stringLights(scene, ls, 0.06);
   }
 
+  /* ---------- bonus targets: called out in the flyover, then the thing itself glows (one list per hole) ---------- */
+  function bonus(B) {
+    var T = B.T, C = B.C, box3 = B.box3, origin = B.origin, skipSpot = B.skipSpot;
+    return [
+      [{ id: 'gong', color: 0xffc93c, label: 'RING THE GONG', sub: 'BANK IT IN: JACKPOT', p: function () { var b = C.HOLES[0].backstop; return [b.x, b.y, b.z + b.r + 0.3]; },
+         shells: function () { var b = C.HOLES[0].backstop, g = new T.CylinderGeometry(b.r, b.r, 0.12, 32); g.rotateX(Math.PI / 2); return [[g, b.x, b.y, b.z]]; } },
+       { id: 'stack', color: 0xff8f6b, label: 'OVER THE BARRELS', sub: '+800 ON A MAKE', p: function () { return [C.STACK.x, C.STACK.y, 1.6]; }, when: function () { return origin().y < C.STACK.y; },
+         shells: function () { return [[box3(2.15, 1.3, 0.95), C.STACK.x, C.STACK.y, 0.67]]; } },
+       { id: 'kegs', color: 0x8ed8ff, label: 'OVER THE KEGS', sub: '+800 ON A MAKE', p: function () { return [-0.52, 22.6, 1.5]; }, when: function () { return origin().y < 22.6; },
+         shells: function () { return [[box3(1.85, 1.22, 0.46), -0.52, 22.6, 0.61]]; } },
+       { id: 'skip', color: 0x5fe0c8, label: 'SKIP IT IN', sub: 'AIM AT THE FLOOR, NOSE DOWN: +2000', p: function () { return skipSpot().concat([0.15]); }, floor: true }],
+      [{ id: 'door', color: 0x9ef01a, label: 'THREAD THE DOOR', sub: '+1000 ON A MAKE', p: function () { return [(C.DOOR.x0 + C.DOOR.x1) / 2, C.ROOM.y1, C.DOOR.h + 0.3]; }, when: function () { return origin().y < C.ROOM.y1; },
+         shells: function () { var D = C.DOOR, y = C.ROOM.y1, w = D.x1 - D.x0; return [[box3(0.2, D.h, 0.4), D.x0, y, D.h / 2], [box3(0.2, D.h, 0.4), D.x1, y, D.h / 2], [box3(w, 0.2, 0.4), (D.x0 + D.x1) / 2, y, D.h]]; } },
+       { id: 'kegwall', color: 0xffc93c, label: 'KEG BANK', sub: 'BANK IT IN: JACKPOT', p: function () { var b = C.HOLES[1].backstop; return [b.x, b.y, b.h + 0.4]; },
+         shells: function () { var b = C.HOLES[1].backstop; return [[box3(b.hx * 2, b.h, b.hy * 2), b.x, b.y, b.h / 2]]; } }],
+      [{ id: 'oak', color: 0x9ef01a, label: 'UNDER THE OAK', sub: '+800  ·  TREE KISS +300', p: function () { return [C.OAK.x, C.OAK.y, 3.0]; }, when: function () { return origin().y < C.OAK.y; },
+         shells: function () { return C.OAK.canopy.map(function (c) { var g = new T.IcosahedronGeometry(c.r, 1); g.scale(1, 0.75, 1); return [g, C.OAK.x + c.dx, C.OAK.y + c.dy, c.z]; }); } },
+       { id: 'crates', color: 0xffc93c, label: 'CRATE BANK', sub: 'BANK IT IN: JACKPOT', p: function () { var b = C.HOLES[2].backstop; return [b.x, b.y, b.h + 0.4]; },
+         shells: function () { var b = C.HOLES[2].backstop; return [[box3(b.hx * 2, b.h, b.hy * 2), b.x, b.y, b.h / 2]]; } },
+       { id: 'truck', color: 0xff8f6b, label: 'TACO TRUCK', sub: 'HIT IT: +250', p: function () { return [C.TRUCK.x, C.TRUCK.y, C.TRUCK.h + 0.5]; },
+         shells: function () { var t = C.TRUCK; return [[box3(t.hx * 2, t.h - 0.3, t.hy * 2), t.x, t.y, 0.3 + (t.h - 0.3) / 2]]; } }],
+      [{ id: 'silo', color: 0x8ed8ff, label: 'SILO SLAM', sub: 'BANK OFF THE SILO: +1500', p: function () { return [C.SILO.x, C.SILO.y, 5.5]; },
+         shells: function () { var s = C.SILO, g = new T.CylinderGeometry(s.r, s.r, s.h, 28); return [[g, s.x, s.y, s.h / 2]]; } },
+       { id: 'sacks', color: 0xffc93c, label: 'SACK BANK', sub: 'BANK IT IN: JACKPOT', p: function () { var b = C.HOLES[3].backstop; return [b.x, b.y, b.h + 0.5]; },
+         shells: function () { var b = C.HOLES[3].backstop; return [[-0.55, 0], [0, 0], [0.55, 0], [-0.28, 0.5], [0.28, 0.5], [0, 1.0]].map(function (q) { var sg = new T.SphereGeometry(0.34, 12, 8); sg.scale(1.0, 0.75, 1.25); return [sg, b.x + q[0], b.y, 0.26 + q[1]]; }); } }],
+      [{ id: 'under', color: 0x5fe0c8, label: 'UNDER THE TRUCK', sub: 'SKIP IT UNDER: +1000', p: function () { return [C.BOX_TRUCK.x, C.BOX_TRUCK.y, C.BOX_TRUCK.z1 + 0.5]; },
+         shells: function () { var t = C.BOX_TRUCK; return [[box3(t.hx * 2 - 0.1, t.z0 - 0.05, t.hy * 2 - 0.1), t.x, t.y, t.z0 / 2]]; } },
+       { id: 'pallets', color: 0xffc93c, label: 'PALLET BANK', sub: 'BANK IT IN: JACKPOT', p: function () { var b = C.HOLES[4].backstop; return [b.x, b.y, b.h + 0.5]; },
+         shells: function () { var b = C.HOLES[4].backstop; return [[box3(b.hx * 2, b.h, b.hy * 2), b.x, b.y, b.h / 2]]; } }],
+      [{ id: 'under6', color: 0x5fe0c8, label: 'UNDER THE TRUCK', sub: 'SKIP IT UNDER: +1000', p: function () { return [C.BOX_TRUCK.x, C.BOX_TRUCK.y, C.BOX_TRUCK.z1 + 0.5]; },
+         shells: function () { var t = C.BOX_TRUCK; return [[box3(t.hx * 2 - 0.1, t.z0 - 0.05, t.hy * 2 - 0.1), t.x, t.y, t.z0 / 2]]; } },
+       { id: 'dock', color: 0xffc93c, label: 'DOCK BANK', sub: 'BANK IT IN: JACKPOT', p: function () { var b = C.HOLES[5].backstop; return [b.x, b.y - b.hy, b.h + 0.6]; },
+         shells: function () { var b = C.HOLES[5].backstop, bk = C.HOLES[5].basket; return [[box3(3.2, b.h, 0.3), bk.x, b.y - b.hy + 0.15, b.h / 2]]; } }]
+    ];
+  }
+
+  Venues.register({ id: 'taproom', buildScene: buildScene, bonus: bonus });
+})(Venues);
+
+/* =====================================================================
+   PUTT LEAGUE · COURSE
+   The rules for whichever venue is live (venues/<id>.js, picked with Course.use): every solid
+   (the venue's, plus each hole's basket and bank board), the discs, the aim solver, the throw,
+   the lie rule and relief, reading a throw for points, and the scoring. The live venue's layout
+   (ROOM, OAK, ...) and HOLES are mirrored onto Course, so Course.HOLES is always the live course.
+   ===================================================================== */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) { const Venues = require('./venues.js'); require('./venues/taproom.js'); module.exports = factory(Venues); }
+  else root.Course = factory(root.Venues);
+})(typeof self !== 'undefined' ? self : this, function (Venues) {
+  'use strict';
+  const FT = 0.3048;
+
+  /* ---------- the live venue ---------- */
+  let V = null, HOLES = [], BIG_BANKS = {}, mirrored = [];
+  function use(id) {
+    V = typeof id === 'object' ? Venues.register(id) : Venues.get(id);
+    HOLES = V.HOLES;
+    HOLES.forEach(h => { h.dist = Math.hypot(h.basket.x - h.tee.x, h.basket.y - h.tee.y); });
+    BIG_BANKS = {}; HOLES.forEach(h => { if (h.backstop.bank) BIG_BANKS[h.backstop.name] = h.backstop.bank; });
+    mirrored.forEach(k => { delete api[k]; });
+    mirrored = Object.keys(V.layout || {}).concat(['HOLES', 'venue']);
+    Object.assign(api, V.layout || {}, { HOLES, venue: V });
+    return V;
+  }
+
+  /* ---------- discs (speed 4 and under) ---------- */
+  const DISCS = [
+    { key: 'putter', label: 'PUTTER', speed: 2, glide: 3, turn: 0, fade: 1, color: 0xF2A13B },
+    { key: 'approach', label: 'APPROACH', speed: 3, glide: 4, turn: 0, fade: 2, color: 0x2E9C9A },
+    { key: 'mid', label: 'MID', speed: 4, glide: 5, turn: -1, fade: 1, color: 0xE0482F },
+  ];
+
+  /* ---------- surfaces ---------- */
+  function installFloor(MATS) { Object.keys(V.SURFACES).forEach(k => { MATS.surfaces[k] = V.SURFACES[k]; }); }
+  const surfaceAt = (x, y) => V.surfaceAt(x, y);
+  const inPlay = (x, y) => V.inPlay(x, y);
+
+  /* ---------- every solid (world metres) ---------- */
+  function worldSolids(activeHole) {
+    const S = [];
+    const box = (name, x, y, hx, hy, z0, z1, mat, tag) => S.push({ kind: 'box', x, y, hx, hy, yaw: 0, z0, z1, mat, name, tag: tag || name });
+    const cyl = (name, x, y, r, z0, z1, mat, tag) => S.push({ kind: 'cyl', x, y, r, z0, z1, mat, name, tag: tag || name });
+    V.solids(box, cyl, S);
+    // baskets and their bank boards
+    HOLES.forEach((h, i) => {
+      const b = h.backstop;
+      if (b.kind === 'gong') box('Gong', b.x, b.y, b.r, b.t, b.z - b.r, b.z + b.r, 'metal', 'Gong');
+      else box(b.name, b.x, b.y, b.hx, b.hy, 0, b.h, b.mat || (b.kind === 'kegs' ? 'metal' : b.kind === 'sacks' ? 'hay' : b.kind === 'dock' ? 'stone' : 'timber'), b.name);
+      if (i === activeHole) {
+        // the live basket's pole and base, for a disc already on the ground (the catcher handles them in the air)
+        S.push({ kind: 'cyl', x: h.basket.x, y: h.basket.y, r: 0.024, z0: 0, z1: 1.47, mat: 'metal', name: 'Basket pole', tag: 'Basket', groundOnly: true });
+        S.push({ kind: 'cyl', x: h.basket.x, y: h.basket.y, r: 0.22, z0: 0, z1: 0.06, mat: 'metal', name: 'Basket base', tag: 'Basket', groundOnly: true });
+      } else {
+        cyl('Other basket', h.basket.x, h.basket.y, 0.03, 0, 1.47, 'metal', 'OtherBasket');
+        cyl('Other basket', h.basket.x, h.basket.y, 0.34, 0.58, 0.82, 'metal', 'OtherBasket');
+        cyl('Other basket', h.basket.x, h.basket.y, 0.29, 1.32, 1.43, 'metal', 'OtherBasket');
+      }
+    });
+    return S;
+  }
+  function solidsFrom(o, activeHole) {
+    return worldSolids(activeHole).map(s => {
+      const c = JSON.parse(JSON.stringify(s));
+      if (c.kind === 'capsule') { c.a.x -= o.x; c.a.y -= o.y; c.b.x -= o.x; c.b.y -= o.y; }
+      else { c.x -= o.x; c.y -= o.y; }
+      return c;
+    });
+  }
+
+  /* ---------- the throw: flick class -> release, and the aim solver ---------- */
+  const RELEASE_H = 1.0, CHAIN_Z = 1.08;
+  const BANK = { 3: -26, 2: -16, 1: -8, 0: 0, '-1': 8, '-2': 16, '-3': 26 };
+  function mphFor(d) { return d <= 12 ? 11 + 0.95 * d : 22.4 + 0.45 * (d - 12); }   // putts: a firm-but-dying pace, so a miss ends a few feet past, not across the room
+  function baseParams(disc, cls) {
+    return { disc: { speed: disc.speed, glide: disc.glide, turn: disc.turn, fade: disc.fade }, hand: 'RHBH', spin: 900,
+      hyzer: BANK[cls] || 0, launchAngle: 6, nose: 4.5, releaseHeight: RELEASE_H / FT, groundEffect: 0.25 };
+  }
+  /* aim and launch that carry a clean, neutral throw of this class (nothing in the way) to the target at a
+     natural speed for the distance. Nose and power are applied after, as deviations. */
+  function solve(P, from, disc, cls, target, ceiling) {
+    const tx = target.x - from.x, ty = target.y - from.y, dist = Math.max(0.5, Math.hypot(tx, ty));
+    let aimZ = target.z != null ? target.z : CHAIN_Z;
+    const p = baseParams(disc, cls);
+    const ux = tx / dist, uy = ty / dist;
+    const probe = (aimDeg, la, mph) => {
+      const r = P.simulate(Object.assign({}, p, { aim: aimDeg, armSpeed: mph, launchAngle: la, nose: la - 1.5, seed: 1 }));
+      let prev = null, apex = 0;
+      for (const s of r.samples) {
+        apex = Math.max(apex, s.z * FT);
+        const x = s.x * FT, y = s.y * FT, along = x * ux + y * uy;
+        if (along >= dist) {
+          let k = 1, q = s;
+          if (prev) { const pa = prev.x * FT * ux + prev.y * FT * uy; k = (dist - pa) / ((along - pa) || 1); q = prev; }
+          const lx = (q.x + (s.x - q.x) * k) * FT, ly = (q.y + (s.y - q.y) * k) * FT, z = (q.z + (s.z - q.z) * k) * FT;
+          return { z, lat: lx * uy - ly * ux, reached: true, apex };
+        }
+        prev = s;
+      }
+      const last = r.samples[r.samples.length - 1];
+      return { z: -1, lat: last.x * FT * uy - last.y * FT * ux, reached: false, apex };
+    };
+    let aim = Math.atan2(tx, ty) * 180 / Math.PI, launch, speed;
+    if (target.carry) {
+      // aimed through a point in the air: the disc goes THROUGH the reticle and comes down about where it is
+      // headed (the basket, or just past the point if the point is beyond it). For a launch angle, find the arm
+      // speed that passes the point; then pick the launch whose landing matches, the lowest one if several do.
+      // Indoors nothing may top out into the rafters.
+      const goal = target.land || Math.max(dist + 1.5, (target.carry || dist) / 1.2), roof = ceiling ? Math.min(ceiling, 4.6) : 0;
+      const run = (la, mph) => {
+        const r = P.simulate(Object.assign({}, p, { aim, armSpeed: mph, launchAngle: la, nose: la - 1.5, seed: 1 }));
+        let prev = null, apex = 0, zAt = null, lat = 0, land = 0;
+        for (const s of r.samples) {
+          apex = Math.max(apex, s.z * FT);
+          const x = s.x * FT, y = s.y * FT, along = x * ux + y * uy; land = along;
+          if (zAt === null && along >= dist) {
+            let k = 1, q = s;
+            if (prev) { const pa = prev.x * FT * ux + prev.y * FT * uy; k = (dist - pa) / ((along - pa) || 1); q = prev; }
+            const lx = (q.x + (s.x - q.x) * k) * FT, ly = (q.y + (s.y - q.y) * k) * FT; zAt = (q.z + (s.z - q.z) * k) * FT; lat = lx * uy - ly * ux;
+          }
+          prev = s;
+        }
+        if (zAt === null) { const L = r.samples[r.samples.length - 1]; lat = L.x * FT * uy - L.y * FT * ux; }
+        return { zAt, lat, land, apex };
+      };
+      const speedFor = (la) => {
+        let lo = 8, hi = 85, best = null;
+        for (let i = 0; i < 11; i++) {
+          const mid = (lo + hi) / 2, r = run(la, mid);
+          aim += Math.atan2(-r.lat, dist) * 180 / Math.PI;
+          if (r.zAt === null || r.zAt < aimZ) lo = mid; else hi = mid;
+          best = { mph: mid, r };
+        }
+        const r = run(la, (lo + hi) / 2);
+        return { la, mph: (lo + hi) / 2, r, aim, ok: r.zAt !== null && Math.abs(r.zAt - aimZ) < 0.25 && hi < 84 };
+      };
+      const search = () => {
+        const la0 = Math.max(-4, Math.min(40, Math.atan2(aimZ - RELEASE_H, dist) * 57.3 + 1));
+        let pick = null, prevC = null;
+        for (let la = la0; la <= 50; la += 5) {
+          const c = speedFor(la);
+          if (!c.ok || (roof && c.r.apex > roof)) continue;
+          if (c.r.land <= goal) {
+            if (prevC) { let A = prevC, B = c; for (let j = 0; j < 3; j++) { const m = speedFor((A.la + B.la) / 2); if (!m.ok || (roof && m.r.apex > roof)) break; if (m.r.land > goal) A = m; else B = m; } pick = Math.abs(A.r.land - goal) < Math.abs(B.r.land - goal) ? A : B; }
+            else pick = c;
+            break;
+          }
+          prevC = c;
+        }
+        return pick || prevC;
+      };
+      let pick = search();
+      // indoors, a point too high to thread under the rafters from here: the highest line that fits
+      while (!pick && roof && aimZ > RELEASE_H + 0.2) { aimZ = Math.max(RELEASE_H, aimZ - 0.4); pick = search(); }
+      if (!pick) pick = speedFor(Math.max(-4, Math.atan2(aimZ - RELEASE_H, dist) * 57.3 + 1));
+      launch = pick.la; speed = pick.mph; aim = pick.aim;
+      // polish: settle the line and the arm on this launch so it really threads the point
+      for (let j = 0; j < 5; j++) {
+        const r = run(launch, speed); if (r.zAt === null) { speed *= 1.03; continue; }
+        if (roof && r.apex > roof && j > 0) { speed /= 1.02; break; }
+        aim += Math.atan2(-r.lat, dist) * 180 / Math.PI;
+        const dz = aimZ - r.zAt; if (Math.abs(dz) < 0.04 && Math.abs(r.lat) < 0.04) break;
+        speed *= 1 + Math.max(-0.02, Math.min(0.02, dz * 0.03));
+      }
+    } else if (dist <= 13) {
+      speed = mphFor(dist); launch = 6;
+      for (let i = 0; i < 18; i++) {
+        const a = probe(aim, launch, speed);
+        aim += Math.atan2(-a.lat, dist) * 180 / Math.PI;
+        const dz = aimZ - a.z;
+        if (a.reached && Math.abs(dz) < 0.015 && Math.abs(a.lat) < 0.015) break;
+        launch += a.reached ? Math.max(-5, Math.min(5, dz / dist * 57.3 * 0.9)) : 3;
+        if (launch > 24) { launch = 24; speed *= 1.05; }
+        launch = Math.max(-8, launch);
+      }
+    } else {
+      // pitches: a natural launch for the disc; the speed is what we solve (and the launch drops if the apex would hit a ceiling)
+      launch = disc.speed <= 2 ? 11 : disc.speed === 3 ? 9 : 8;
+      speed = mphFor(dist);
+      for (let i = 0; i < 16; i++) {
+        const a = probe(aim, launch, speed);
+        aim += Math.atan2(-a.lat, dist) * 180 / Math.PI;
+        if (ceiling && a.apex > ceiling && launch > 2) { launch -= 1.5; continue; }
+        const dz = aimZ - a.z;
+        if (a.reached && Math.abs(dz) < 0.03 && Math.abs(a.lat) < 0.03) break;
+        speed *= a.reached ? (1 + Math.max(-0.08, Math.min(0.12, dz / dist * 1.4))) : 1.1;
+        speed = Math.max(8, Math.min(75, speed));
+      }
+    }
+    return Object.assign(p, { aim, launchAngle: launch, nose: launch - 1.5, armSpeed: speed, solvedMph: speed, dist });
+  }
+  // where to aim by default from a lie: the basket, unless the venue routes it (out a door, around a corner)
+  function defaultTarget(holeIndex, lie) { return V.defaultTarget ? V.defaultTarget(HOLES[holeIndex], lie) : null; }
+
+  function throwIt(E, holeIndex, from, params, seed) {
+    const h = HOLES[holeIndex], o = { x: from.x, y: from.y, z: 0 };
+    const sim = Object.assign({}, params, {
+      seed: seed != null ? seed : 1,
+      collider: E.FB.createCatcher({ base: { x: h.basket.x - o.x, y: h.basket.y - o.y, z: 0 }, mount: 'ground' }),
+      contact: E.CT.create({ materials: E.MATS, solidMaterials: E.MATS.solids, solids: solidsFrom(o, holeIndex), surfaceAt: (x, y) => surfaceAt(x + o.x, y + o.y), noTombstone: true, seed: seed || 7 }),
+    });
+    const rec = E.P.simulate(sim);
+    rec.origin = o; rec.hole = holeIndex;
+    const last = rec.samples[rec.samples.length - 1];
+    let li = rec.samples.length - 1; for (let i = rec.samples.length - 1; i >= 0; i--) if (!rec.samples[i].post) { li = i; break; }
+    const L = rec.samples[li];
+    rec.rest = { x: L.x * FT + o.x, y: L.y * FT + o.y, z: L.z * FT };
+    return rec;
+  }
+
+  /* ---------- the lie: where the next throw goes from ---------- */
+  function footprints(activeHole) {
+    const out = [];
+    worldSolids(activeHole).forEach(s => {
+      if (s.tag === 'Wall' || s.tag === 'Ceiling' || s.tag === 'Beam' || s.tag === 'Fence' || s.groundOnly || s.kind === 'blob') return;
+      if (s.kind === 'box') out.push({ k: 'box', x: s.x, y: s.y, hx: s.hx, hy: s.hy });
+      else if (s.kind === 'cyl') { if (s.z0 < 1.5) out.push({ k: 'cyl', x: s.x, y: s.y, r: s.r }); }
+      else if (s.kind === 'capsule') { if (Math.min(s.a.z, s.b.z) < 1.5) out.push({ k: 'box', x: (s.a.x + s.b.x) / 2, y: (s.a.y + s.b.y) / 2, hx: Math.abs(s.a.x - s.b.x) / 2 + s.r, hy: Math.abs(s.a.y - s.b.y) / 2 + s.r }); }
+    });
+    return out;
+  }
+  function blocked(x, y, fp, m) {
+    if (!inPlay(x, y)) return true;
+    if (V.nearEdge && V.nearEdge(x, y, m)) return true;
+    for (const f of fp) {
+      if (f.k === 'box' && Math.abs(x - f.x) < f.hx + m && Math.abs(y - f.y) < f.hy + m) return true;
+      if (f.k === 'cyl' && Math.hypot(x - f.x, y - f.y) < f.r + m) return true;
+    }
+    return false;
+  }
+  function fixLie(x, y, activeHole, prev) {
+    const fp = footprints(activeHole), m = 0.4;
+    if (!inPlay(x, y) && prev) return { x: prev.x, y: prev.y, moved: true, ob: true };
+    let res = null;
+    if (!blocked(x, y, fp, m)) res = { x, y, moved: false };
+    else {
+      for (let r = 0.25; r < 6 && !res; r += 0.25) for (let k = 0; k < 24; k++) {
+        const a = k / 24 * Math.PI * 2, nx = x + Math.cos(a) * r, ny = y + Math.sin(a) * r;
+        if (!blocked(nx, ny, fp, m)) { res = { x: nx, y: ny, moved: true }; break; }
+      }
+      if (!res) return prev ? { x: prev.x, y: prev.y, moved: true } : { x, y, moved: false };
+    }
+    // relief from the bank board: a lie tucked behind it (the board between you and the basket) slides around
+    // the basket, same distance, to the nearest side with a look at the chains
+    const h = HOLES[activeHole], bk = h.basket, b = h.backstop, d0 = Math.hypot(res.x - bk.x, res.y - bk.y);
+    const hx = (b.kind === 'gong' ? b.r : b.hx) + 0.3, hy = (b.kind === 'gong' ? b.t : b.hy) + 0.3;
+    const hides = (px, py) => { for (let i = 1; i < 20; i++) { const k = i / 20, qx = px + (bk.x - px) * k, qy = py + (bk.y - py) * k; if (Math.abs(qx - b.x) < hx && Math.abs(qy - b.y) < hy) return true; } return false; };
+    if (d0 < 9 && d0 > 0.3 && hides(res.x, res.y)) {
+      const a0 = Math.atan2(res.y - bk.y, res.x - bk.x);
+      for (let da = 0.08; da < 3.0; da += 0.08) for (const sg of [1, -1]) {
+        const a = a0 + sg * da, nx = bk.x + Math.cos(a) * d0, ny = bk.y + Math.sin(a) * d0;
+        if (!hides(nx, ny) && !blocked(nx, ny, fp, m)) return { x: nx, y: ny, moved: true, relief: true };
+      }
+    }
+    // relief from being pinned against something big (the venue lists them: the silo, the box truck, a kettle): a lie
+    // tucked within a couple of metres of it, with it square in the way, slides around it (same distance to the basket)
+    // just far enough to see past its edge. Lies farther back play it as it lies.
+    const big = V.bigObstacles || [];
+    const gap = (o, px, py) => o.k === 'c' ? Math.hypot(px - o.x, py - o.y) - o.r : Math.max(Math.abs(px - o.x) - o.hx, Math.abs(py - o.y) - o.hy);
+    const inWay = (o, px, py) => { for (let i = 1; i < 24; i++) { const k = i / 24, qx = px + (bk.x - px) * k, qy = py + (bk.y - py) * k; if (gap(o, qx, qy) < 0.35) return true; } return false; };
+    for (const o of big) {
+      if (gap(o, res.x, res.y) > 2.2 || !inWay(o, res.x, res.y)) continue;
+      const a0 = Math.atan2(res.y - bk.y, res.x - bk.x);
+      for (let da = 0.03; da < 1.2; da += 0.03) for (const sg of [1, -1]) {
+        const a = a0 + sg * da, nx = bk.x + Math.cos(a) * d0, ny = bk.y + Math.sin(a) * d0;
+        if (Math.hypot(nx - res.x, ny - res.y) > 5) break;
+        if (!inWay(o, nx, ny) && !blocked(nx, ny, fp, m)) return { x: nx, y: ny, moved: true, relief: true };
+      }
+    }
+    return res;
+  }
+
+  /* ---------- reading a throw for points ---------- */
+  const PTS = { make: 1000, bank: 1500, bigBank: 2000, skipIn: 2000, over: 800, thread: 1000, under: 800, kiss: 300, hung: 500, ceiling: 300,
+    pair: 1500, chainout: 250, spit: 300, band: 150, pole: 200, cage: 100, pinball: 150, wall: 50, roller: 20, skip: 75, cheers: 300,
+    ace: 10000, downtown: 40, parked: 300, circle: 100 };
+  function readThrow(rec, mode, stroke) {
+    const h = HOLES[rec.hole], ev = rec.events || [], out = [], c = rec.catchResult || { outcome: 'none' }, o = rec.origin;
+    const made = c.outcome === 'made';
+    const madeT = made ? (ev.find(e => e.type === 'made') || { t: 1e9 }).t : 1e9;
+    const before = e => e.t < madeT;
+    const bounces = ev.filter(e => e.type === 'bounce'), floor = ev.filter(e => e.type === 'skip' || e.type === 'hop');
+    const award = (key, label, pts, kind, trick) => out.push({ key, label, pts, kind: kind || 'bonus', trick: !!trick });
+    const W = s => ({ x: s.x * FT + o.x, y: s.y * FT + o.y, z: s.z * FT });
+    // the venue's passes (over, under, through things), read off the flight
+    const tk = V.tricks || {}, f = tk.start ? tk.start(o) : {}, k = { award, bounces, out, PTS };
+    if (tk.sample) for (const s0 of rec.samples || []) { if (s0.landed) break; tk.sample(f, W(s0)); }
+    const brushed = ev.some(e => e.type === 'brush'), hung = ev.some(e => e.type === 'hung');
+    const ceiling = bounces.some(e => e.name === 'Ceiling');
+    if (made) {
+      if (mode === 'pitch' && stroke === 1) award('ace', 'ACE!!!', PTS.ace, 'make', true);
+      else award('make', 'CHAAING!', PTS.make, 'make');
+      const bb = bounces.filter(before);
+      const big = bb.find(e => BIG_BANKS[e.name]);
+      if (big) award('bigbank', BIG_BANKS[big.name] + '!', PTS.bigBank, 'bonus', true);
+      else if (bb.length) award('bank', 'BANK OFF THE ' + String(bb[bb.length - 1].name || 'WALL').toUpperCase() + '!', PTS.bank, 'bonus', true);
+      if (ceiling) award('ceilbank', 'CEILING SHOT', PTS.ceiling, 'bonus', true);
+      if (floor.some(before)) award('skipIn', 'SKIP IN!', PTS.skipIn, 'bonus', true);
+      if (tk.make) tk.make(f, k);
+      if (brushed) award('kiss', 'TREE KISS', PTS.kiss, 'bonus', true);
+      const d = Math.hypot(h.basket.x - o.x, h.basket.y - o.y) / FT;
+      if (d > 34) award('downtown', 'DOWNTOWN ' + Math.round(d) + ' FT', Math.round(PTS.downtown * d), 'bonus', d > 60);
+    } else {
+      const map = { chainout: ['CHAIN OUT', PTS.chainout], spit: ['SPIT THROUGH!', PTS.spit], band: ['RIM SHOT', PTS.band], pole: ['CLANG!', PTS.pole], cage: ['CAGE RATTLE', PTS.cage] };
+      if (map[c.outcome]) award(c.outcome, map[c.outcome][0], map[c.outcome][1], 'near');
+      if (bounces.length >= 2) award('pinball', 'PINBALL x' + bounces.length, PTS.pinball * bounces.length);
+      else if (bounces.some(e => e.name === 'Wall')) award('wall', 'WALL BALL', PTS.wall);
+      if (ceiling) award('ceiling', 'CEILING SHOT', PTS.ceiling);
+      const roll = ev.find(e => e.type === 'roll');
+      if (roll) { const rx = roll.x * FT + o.x, ry = roll.y * FT + o.y, d = Math.hypot(rec.rest.x - rx, rec.rest.y - ry); if (d > 1) award('roller', 'ROLLER ' + Math.round(d / FT) + ' FT', Math.round(PTS.roller * d / FT)); }
+      if (floor.length >= 2) award('skips', 'SKIPPER x' + floor.length, PTS.skip * floor.length);
+      if (hung) award('hung', 'STUCK IN THE TREE!', PTS.hung);
+      else if (brushed) award('kiss', 'TREE KISS', PTS.kiss);
+      if (tk.miss) tk.miss(f, k);
+      if (mode === 'pitch') {
+        const d = Math.hypot(rec.rest.x - h.basket.x, rec.rest.y - h.basket.y);
+        if (d < 0.9) award('parked', 'PARKED IT', PTS.parked);
+        else if (d < 3) award('circle', 'TAP-IN RANGE', PTS.circle);
+      }
+    }
+    if (tk.hits) tk.hits(f, k);
+    return { made, outcome: c.outcome, awards: out, tricks: out.filter(a => a.trick).length };
+  }
+  function scoreName(strokes, par) {
+    if (strokes === 1) return 'ACE';
+    const d = strokes - par;
+    return d <= -2 ? 'EAGLE' : d === -1 ? 'BIRDIE' : d === 0 ? 'PAR' : d === 1 ? 'BOGEY' : d === 2 ? 'DOUBLE BOGEY' : '+' + d;
+  }
+  const HOLE_PTS = { ACE: 10000, EAGLE: 5000, BIRDIE: 3000, PAR: 1500, BOGEY: 500 };
+
+  const api = { FT, DISCS, PTS, HOLE_PTS, BANK, CHAIN_Z, Venues, use, venueIds: () => Venues.ids(),
+    installFloor, surfaceAt, inPlay, worldSolids, solidsFrom, baseParams, mphFor, solve, defaultTarget, throwIt, fixLie, readThrow, scoreName };
+  use();
+  return api;
+});
+
+/* =====================================================================
+   PUTT LEAGUE · SCENE KIT (three.js r128)
+   Cel-shaded: toon materials with three light bands, ink outlines (inverted hull on smoothed
+   normals), canvas-painted textures, merged static batches, baskets with live chains, the bank
+   boards and tee mats every hole gets. The live venue (venues/<id>.scene.js) builds the rest.
+   Engine frame (x right, y downrange, z up, metres) maps to three.js as (x, z, -y).
+   ===================================================================== */
+var VenueScene = (function () {
+  'use strict';
+  var T = THREE, C = Course;
+  var INK = new T.Color(0x1d130c);
+  function W(x, y, z) { return new T.Vector3(x, z, -y); }
+
+  /* ---------- toon materials ---------- */
+  var grad = (function () {
+    var d = new Uint8Array([90, 90, 90, 170, 170, 170, 255, 255, 255]);
+    var t = new T.DataTexture(d, 3, 1, T.RGBFormat); t.minFilter = t.magFilter = T.NearestFilter; t.generateMipmaps = false; t.needsUpdate = true; return t;
+  })();
+  var matCache = {};
+  function toon(color, o) {
+    o = o || {};
+    var key = color + '|' + (o.map ? o.map.uuid : '') + '|' + (o.emissive || '') + '|' + (o.side || '');
+    if (matCache[key]) return matCache[key];
+    var m = new T.MeshToonMaterial({ color: color, gradientMap: grad, map: o.map || null, emissive: o.emissive || 0x000000, side: o.side || T.FrontSide });
+    matCache[key] = m; return m;
+  }
+  function glow(color) { return new T.MeshBasicMaterial({ color: color }); }
+  var outlineMats = {};
+  function outlineMat(thick) {
+    var k = thick.toFixed(3); if (outlineMats[k]) return outlineMats[k];
+    outlineMats[k] = new T.ShaderMaterial({
+      uniforms: { c: { value: INK }, t: { value: thick } },
+      vertexShader: 'attribute vec3 oNormal; uniform float t; void main(){ vec4 mv = modelViewMatrix * vec4(position + oNormal * t, 1.0); gl_Position = projectionMatrix * mv; }',
+      fragmentShader: 'uniform vec3 c; void main(){ gl_FragColor = vec4(c, 1.0); }',
+      side: T.BackSide
+    });
+    return outlineMats[k];
+  }
+  // averaged normals per position, so the hull closes over hard edges (boxes get a solid ink line)
+  function smoothNormals(g) {
+    var p = g.attributes.position, n = g.attributes.normal, map = {}, out = new Float32Array(p.count * 3), i, k;
+    for (i = 0; i < p.count; i++) {
+      k = Math.round(p.getX(i) * 1000) + ',' + Math.round(p.getY(i) * 1000) + ',' + Math.round(p.getZ(i) * 1000);
+      var a = map[k] || (map[k] = [0, 0, 0]); a[0] += n.getX(i); a[1] += n.getY(i); a[2] += n.getZ(i);
+    }
+    for (i = 0; i < p.count; i++) {
+      k = Math.round(p.getX(i) * 1000) + ',' + Math.round(p.getY(i) * 1000) + ',' + Math.round(p.getZ(i) * 1000);
+      var v = map[k], l = Math.hypot(v[0], v[1], v[2]) || 1; out[i * 3] = v[0] / l; out[i * 3 + 1] = v[1] / l; out[i * 3 + 2] = v[2] / l;
+    }
+    g.setAttribute('oNormal', new T.BufferAttribute(out, 3));
+  }
+  function outline(mesh, thick) {
+    if (!mesh.geometry.attributes.oNormal) smoothNormals(mesh.geometry);
+    var o = new T.Mesh(mesh.geometry, outlineMat(thick == null ? 0.02 : thick));
+    o.matrixAutoUpdate = false; mesh.add(o); o.updateMatrix();
+    return mesh;
+  }
+
+  /* ---------- static geometry is merged per material: few draw calls on a phone ---------- */
+  function Batch(parent) { this.parent = parent; this.groups = {}; }
+  Batch.prototype.add = function (geom, mat, matrix, ink) {
+    var key = mat.uuid + (ink ? '|' + ink : '');
+    var g = geom.index ? geom.toNonIndexed() : geom.clone();
+    if (!g.attributes.uv) g.setAttribute('uv', new T.BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2));
+    g.applyMatrix4(matrix);
+    (this.groups[key] || (this.groups[key] = { mat: mat, ink: ink, list: [] })).list.push(g);
+  };
+  Batch.prototype.build = function () {
+    var meshes = [];
+    for (var key in this.groups) {
+      var G = this.groups[key], n = 0, i;
+      G.list.forEach(function (g) { n += g.attributes.position.count; });
+      var pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), uv = new Float32Array(n * 2), o = 0;
+      G.list.forEach(function (g) { pos.set(g.attributes.position.array, o * 3); nor.set(g.attributes.normal.array, o * 3); uv.set(g.attributes.uv.array, o * 2); o += g.attributes.position.count; });
+      var geo = new T.BufferGeometry();
+      geo.setAttribute('position', new T.BufferAttribute(pos, 3)); geo.setAttribute('normal', new T.BufferAttribute(nor, 3)); geo.setAttribute('uv', new T.BufferAttribute(uv, 2));
+      var m = new T.Mesh(geo, G.mat); m.matrixAutoUpdate = false;
+      if (G.ink) outline(m, G.ink);
+      this.parent.add(m); meshes.push(m);
+    }
+    return meshes;
+  };
+
+  /* ---------- painted textures ---------- */
+  function canvas(w, h, draw) {
+    var c = document.createElement('canvas'); c.width = w; c.height = h; var g = c.getContext('2d'); draw(g, w, h);
+    var t = new T.CanvasTexture(c); t.wrapS = t.wrapT = T.RepeatWrapping; t.anisotropy = 4; return t;
+  }
+  function rnd(seed) { var s = seed || 1; return function () { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; }; }
+  var TEX = {};
+  function makeTextures() {
+    var r = rnd(7);
+    TEX.brick = canvas(512, 512, function (g, w, h) {               // 1.92 m square: 8 bricks x 24 rows
+      g.fillStyle = '#5c3a2c'; g.fillRect(0, 0, w, h);
+      var bw = w / 8, bh = h / 24;
+      for (var row = 0; row < 24; row++) for (var i = -1; i < 9; i++) {
+        var x = i * bw + (row % 2 ? bw / 2 : 0), y = row * bh, v = r();
+        g.fillStyle = v < 0.33 ? '#9c4a32' : v < 0.66 ? '#a9573a' : '#8a3f2b';
+        g.fillRect(x + 3, y + 3, bw - 6, bh - 6);
+        g.fillStyle = 'rgba(255,220,180,0.12)'; g.fillRect(x + 3, y + 3, bw - 6, 3);
+      }
+      g.fillStyle = 'rgba(29,19,12,0.35)'; for (var k = 0; k < 9; k++) g.fillRect(0, k * bh * 3 - 1, w, 2);
+    });
+    TEX.planks = canvas(512, 512, function (g, w, h) {              // 1.2 m wide x 2.4 m long tile, planks run downrange
+      var pw = w / 6;
+      for (var i = 0; i < 6; i++) {
+        var off = (i * 37 % 5) / 5 * h;
+        for (var j = -1; j < 2; j++) {
+          var y = off + j * h, v = r();
+          g.fillStyle = v < 0.33 ? '#b0703d' : v < 0.66 ? '#a4652f' : '#bd7c48';
+          g.fillRect(i * pw, y, pw, h);
+          g.strokeStyle = 'rgba(80,40,15,0.25)'; g.lineWidth = 2;
+          for (var s = 0; s < 3; s++) { var gx = i * pw + 8 + r() * (pw - 16); g.beginPath(); g.moveTo(gx, y + 10); g.bezierCurveTo(gx + 6, y + h * 0.3, gx - 6, y + h * 0.6, gx + 3, y + h - 10); g.stroke(); }
+          g.fillStyle = '#3a2112'; g.fillRect(i * pw, y, pw, 3);
+        }
+        g.fillStyle = '#3a2112'; g.fillRect(i * pw, 0, 3, h);
+      }
+      g.fillStyle = 'rgba(255,240,210,0.10)'; g.fillRect(0, 0, w, h * 0.04);
+    });
+    TEX.ceiling = canvas(256, 256, function (g, w, h) { g.fillStyle = '#2a1d14'; g.fillRect(0, 0, w, h); g.fillStyle = '#1d140d'; for (var i = 0; i < 8; i++) g.fillRect(0, i * h / 8, w, 3); });
+    TEX.tile = canvas(256, 256, function (g, w, h) { var s = w / 8; for (var i = 0; i < 8; i++) for (var j = 0; j < 8; j++) { g.fillStyle = (i + j) % 2 ? '#e8e0cc' : '#1f5c9a'; g.fillRect(i * s, j * s, s, s); } });
+    TEX.stack = canvas(256, 256, function (g, w, h) { g.fillStyle = '#7b4a26'; g.fillRect(0, 0, w, h); for (var i = 0; i < 12; i++) { g.fillStyle = i % 2 ? '#8d5730' : '#6f4021'; g.fillRect(i * w / 12, 0, w / 12 - 2, h); } });
+  }
+
+  // a sign or poster painted on canvas, returned as a flat panel (plane) facing +normal
+  function paintPanel(w, h, px, draw, emissive) {
+    var tex = canvas(Math.round(px), Math.round(px * h / w), draw); tex.wrapS = tex.wrapT = T.ClampToEdgeWrapping;
+    var m = emissive ? new T.MeshBasicMaterial({ map: tex, transparent: true }) : new T.MeshToonMaterial({ map: tex, gradientMap: grad, transparent: true });
+    return new T.Mesh(new T.PlaneGeometry(w, h), m);
+  }
+  // a bank-board sign: small, lit (so it pops in any light), colored rim, text sized to fit so nothing clips
+  function signBoard(text, w, h, rim, sub) {
+    return paintPanel(w, h, 512, function (g, cw, ch) {
+      var r = ch * 0.22; g.fillStyle = rim || '#ffc93c'; roundRect(g, 0, 0, cw, ch, r); g.fill();
+      g.fillStyle = '#1d130c'; roundRect(g, ch * 0.07, ch * 0.07, cw - ch * 0.14, ch - ch * 0.14, r * 0.7); g.fill();
+      var fs = ch * (sub ? 0.46 : 0.6), fam = '"Bangers", Impact, "Arial Black", sans-serif';
+      g.font = '900 ' + fs + 'px ' + fam; var tw = g.measureText(text).width, maxW = cw * 0.86; if (tw > maxW) fs *= maxW / tw;
+      label(g, text, cw / 2, sub ? ch * 0.4 : ch * 0.53, fs, '#ffc93c', { stroke: Math.max(3, fs * 0.12), glow: 'rgba(255,201,60,0.55)', glowBlur: fs * 0.35 });
+      if (sub) { var f2 = ch * 0.2; g.font = '900 ' + f2 + 'px ' + fam; var t2 = g.measureText(sub).width; if (t2 > maxW) f2 *= maxW / t2; label(g, sub, cw / 2, ch * 0.76, f2, '#fff3df', {}); }
+    }, true);
+  }
+  function roundRect(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
+  function label(g, text, x, y, size, fill, opts) {
+    opts = opts || {};
+    g.font = (opts.weight || '900') + ' ' + size + 'px ' + (opts.font || '"Bangers", Impact, "Arial Black", sans-serif');
+    g.textAlign = opts.align || 'center'; g.textBaseline = 'middle';
+    if (opts.stroke) { g.lineWidth = opts.stroke; g.strokeStyle = opts.strokeColor || '#1d130c'; g.lineJoin = 'round'; g.strokeText(text, x, y); }
+    if (opts.glow) { g.shadowColor = opts.glow; g.shadowBlur = opts.glowBlur || 18; }
+    g.fillStyle = fill; g.fillText(text, x, y); g.shadowBlur = 0;
+  }
+
+  /* ---------- builders (engine frame in, three.js out) ---------- */
+  /* ---------- extra paint for the garden ---------- */
+  function gardenTextures() {
+    var r = rnd(11);
+    TEX.grass = canvas(256, 256, function (g, w, h) {
+      g.fillStyle = '#4f8a3a'; g.fillRect(0, 0, w, h);
+      for (var i = 0; i < 900; i++) { var x = r() * w, y = r() * h; g.strokeStyle = r() < 0.5 ? '#5d9c44' : '#3f7430'; g.lineWidth = 2; g.beginPath(); g.moveTo(x, y); g.lineTo(x + (r() - 0.5) * 4, y - 6 - r() * 5); g.stroke(); }
+    });
+    TEX.pavers = canvas(256, 256, function (g, w, h) {
+      g.fillStyle = '#4a4038'; g.fillRect(0, 0, w, h); var s = w / 4;
+      for (var i = 0; i < 4; i++) for (var j = 0; j < 4; j++) { var v = r(); g.fillStyle = v < 0.33 ? '#9b8f80' : v < 0.66 ? '#a89a88' : '#8d8274'; g.fillRect(i * s + 3 + (j % 2 ? s / 2 : 0) % s, j * s + 3, s - 6, s - 6); }
+    });
+    TEX.gravel = canvas(256, 256, function (g, w, h) { g.fillStyle = '#9b8f7c'; g.fillRect(0, 0, w, h); for (var i = 0; i < 1400; i++) { g.fillStyle = ['#b9ad98', '#7d7262', '#c9bfae', '#6b6153'][i % 4]; g.beginPath(); g.arc(r() * w, r() * h, 1 + r() * 2.2, 0, 7); g.fill(); } });
+    TEX.fence = canvas(256, 128, function (g, w, h) { var pw = w / 8; for (var i = 0; i < 8; i++) { g.fillStyle = i % 2 ? '#8a5a33' : '#7a4d2a'; g.fillRect(i * pw, 0, pw, h); g.fillStyle = '#3a2112'; g.fillRect(i * pw, 0, 3, h); } g.fillStyle = 'rgba(0,0,0,0.25)'; g.fillRect(0, h * 0.2, w, 6); g.fillRect(0, h * 0.75, w, 6); });
+  }
+
+  /* ---------- builders (engine frame in, three.js out) ---------- */
+  function cylGeom(r, h, seg, r2) { var g = new T.CylinderGeometry(r2 == null ? r : r2, r, h, seg || 24); g.translate(0, h / 2, 0); return g; }
+  function latheGeom(prof, seg) { return new T.LatheGeometry(prof.map(function (p) { return new T.Vector2(p[0], p[1]); }), seg || 40); }
+  function mBox(cx, cy, z0, sx, sy, sz, ry) {
+    var m = new T.Matrix4().makeTranslation(cx, z0 + sz / 2, -cy);
+    if (ry) m.multiply(new T.Matrix4().makeRotationY(ry));
+    return m.multiply(new T.Matrix4().makeScale(sx, sz, sy));
+  }
+  function at(x, y, z) { return new T.Matrix4().makeTranslation(x, z || 0, -y); }
+  var GBOX = new T.BoxGeometry(1, 1, 1);
+  function plane(w, h, tex, rep, color) {
+    var t = tex.clone(); t.needsUpdate = true; t.repeat.set(rep[0], rep[1]);
+    return new T.Mesh(new T.PlaneGeometry(w, h), toon(color || 0xffffff, { map: t }));
+  }
+
+  /* ---------- a basket, with chains that the engine can drive ---------- */
+  function makeBasket(scene, hx, hy) {
+    var S = FlightlineBasket.SPEC, chainMat = toon(0xd5dbe0), dark = toon(0x2b1b12);
+    var basket = new T.Group(); basket.position.copy(W(hx, hy, 0)); scene.add(basket);
+    function part(geom, mat, z, ink) { var m = new T.Mesh(geom, mat); m.position.y = z; if (ink) outline(m, ink); basket.add(m); return m; }
+    part(cylGeom(S.poleR, S.poleTop, 12), chainMat, 0, 0.01);
+    part(cylGeom(0.25, 0.03, 28), dark, 0, 0.01);
+    part(latheGeom([[0.04, 0], [S.trayR - 0.06, 0], [S.trayR, S.trayDepth], [S.trayR + 0.01, S.trayDepth + 0.01]], 36), toon(0xbfc7cc, { side: T.DoubleSide }), S.trayBottomZ, 0.012);
+    part(new T.CylinderGeometry(S.bandR, S.bandR, S.bandH, 36, 1, true), new T.MeshToonMaterial({ color: 0xF2A13B, gradientMap: grad, side: T.DoubleSide }), S.bandBottomZ + S.bandH / 2, 0.012);
+    part(new T.CylinderGeometry(0.06, S.bandR, S.lidRise, 24), toon(0xF2A13B), S.bandTopZ + S.lidRise / 2, 0.01);
+    for (var cg = 0; cg < 14; cg++) { var a = cg / 14 * Math.PI * 2, rod = new T.Mesh(cylGeom(0.006, S.trayDepth, 4), chainMat); rod.position.set(Math.cos(a) * (S.trayR - 0.01), S.trayBottomZ, Math.sin(a) * (S.trayR - 0.01)); basket.add(rod); }
+    var defs = FlightlineBasket.strandDefs(S), P = S.segments + 1, nStr = defs.length;
+    var cpos = new Float32Array(nStr * S.segments * 2 * 3), cgeo = new T.BufferGeometry(); cgeo.setAttribute('position', new T.BufferAttribute(cpos, 3));
+    var ch = new T.LineSegments(cgeo, new T.LineBasicMaterial({ color: 0xe9eef2 })); ch.frustumCulled = false; basket.add(ch);
+    var chi = new T.LineSegments(cgeo, new T.LineBasicMaterial({ color: 0x1d130c, transparent: true, opacity: 0.55 })); chi.frustumCulled = false; chi.position.set(0.004, -0.004, 0); basket.add(chi);
+    // a glow ring that lights up when this is the hole being played
+    var halo = new T.Mesh(new T.RingGeometry(0.42, 0.52, 40), new T.MeshBasicMaterial({ color: 0xffc93c, transparent: true, opacity: 0.0, side: T.DoubleSide, depthWrite: false }));
+    halo.rotation.x = -Math.PI / 2; halo.position.y = 0.012; basket.add(halo);
+    function set(x) {
+      var o = 0;
+      for (var s = 0; s < nStr; s++) for (var k = 0; k < S.segments; k++) { var a = (s * P + k) * 3, b = a + 3; cpos[o++] = x[a]; cpos[o++] = x[a + 2]; cpos[o++] = -x[a + 1]; cpos[o++] = x[b]; cpos[o++] = x[b + 2]; cpos[o++] = -x[b + 1]; }
+      cgeo.attributes.position.needsUpdate = true;
+    }
+    set(REST);
+    return { group: basket, setChains: set, halo: halo };
+  }
+  var REST = null;
+
+  var KIT;
+  /* ---------- the whole venue: the kit sets up the scene, the live venue builds into it ---------- */
+  function build() {
+    makeTextures(); gardenTextures();
+    REST = FlightlineBasket.restPose();
+    var scene = new T.Scene(), stat = new Batch(scene), ceilB = new Batch(new T.Group());
+    scene.add(ceilB.parent);
+    var out = { scene: scene, ceiling: ceilB.parent, anim: [], bulbs: [], baskets: [], icons: {} };
+    C.venue.buildScene(KIT, scene, stat, ceilB, out);
+    stat.build(); ceilB.build();
+    return out;
+  }
+
+  /* ---------- each hole's basket, bank board (by kind), Putt tee mats and Pitch tee pad ---------- */
+  function dressHoles(scene, stat, out) {
+    var dark = toon(0x2b1b12), kegMat = toon(0xc9d1d6);
+    C.HOLES.forEach(function (h, i) {
+      out.baskets.push(makeBasket(scene, h.basket.x, h.basket.y));
+      var b = h.backstop;
+      if (b.kind === 'gong') {
+        var gong = new T.Mesh(new T.CylinderGeometry(b.r, b.r, b.t * 2, 40), toon(0x9a4f1e)); gong.rotation.x = Math.PI / 2; gong.position.copy(W(b.x, b.y, b.z)); outline(gong, 0.025); scene.add(gong);
+        var face = paintPanel(b.r * 2, b.r * 2, 256, function (g, w) { g.fillStyle = '#b8642a'; g.beginPath(); g.arc(w / 2, w / 2, w / 2 - 2, 0, 7); g.fill(); g.strokeStyle = 'rgba(60,25,5,0.55)'; g.lineWidth = 5; for (var k = 1; k < 5; k++) { g.beginPath(); g.arc(w / 2, w / 2, k * w / 10, 0, 7); g.stroke(); } g.fillStyle = '#d98a3a'; g.beginPath(); g.arc(w / 2, w / 2, w * 0.13, 0, 7); g.fill(); g.fillStyle = 'rgba(255,230,180,0.45)'; g.beginPath(); g.ellipse(w * 0.34, w * 0.3, w * 0.12, w * 0.05, -0.5, 0, 7); g.fill(); label(g, 'DONG', w / 2, w * 0.78, 40, '#3a1a05', {}); });
+        face.position.copy(W(b.x, b.y - b.t - 0.005, b.z)); scene.add(face);
+        [-1, 1].forEach(function (s) { stat.add(GBOX, dark, mBox(b.x + s * (b.r + 0.12), b.y + 0.05, 0, 0.1, 0.1, b.z + b.r + 0.3), 0.012); });
+        stat.add(GBOX, dark, mBox(b.x, b.y + 0.05, b.z + b.r + 0.25, b.r * 2 + 0.34, 0.1, 0.1), 0.012);
+        out.gong = gong; out.gongFace = face;
+      } else if (b.kind === 'kegs') {
+        for (var row = 0; row < 3; row++) for (var c2 = 0; c2 < 4 - (row === 2 ? 1 : 0); c2++) {
+          var kx = b.x - b.hx + 0.24 + c2 * 0.47 + (row === 2 ? 0.23 : 0), m2 = new T.Mesh(cylGeom(0.21, 0.6, 18), kegMat);
+          m2.position.copy(W(kx, b.y, row * 0.62)); outline(m2, 0.012); scene.add(m2);
+        }
+      } else if (b.kind === 'crates') {
+        for (var cr = 0; cr < 4; cr++) { var col = [0xc0392b, 0x2E9C9A, 0xF2A13B, 0x3B86D9][cr]; stat.add(GBOX, toon(col), mBox(b.x + (cr % 2 ? 0.45 : -0.45), b.y, Math.floor(cr / 2) * 0.9, 0.86, b.hy * 2, 0.86), 0.02); }
+        var sign = signBoard('CRATE BANK', 1.15, 0.34); sign.position.copy(W(b.x, b.y - b.hy - 0.02, b.h + 0.3)); scene.add(sign);
+      } else if (b.kind === 'sacks') {
+        // grain sacks: a stacked pyramid of fat burlap bags
+        var sackM = toon(0xd9c08a);
+        [[-0.55, 0, 0], [0, 0, 0], [0.55, 0, 0], [-0.28, 0, 0.5], [0.28, 0, 0.5], [0, 0, 1.0]].forEach(function (q) { var sk = new T.Mesh(new T.SphereGeometry(0.34, 12, 8), sackM); sk.scale.set(1.0, 0.75, 1.25); sk.position.copy(W(b.x + q[0], b.y, 0.26 + q[2])); outline(sk, 0.015); scene.add(sk); });
+        var sgn = signBoard('SACK BANK', 1.1, 0.32); sgn.position.copy(W(b.x, b.y - b.hy - 0.05, b.h + 0.2)); scene.add(sgn);
+      } else if (b.kind === 'pallets') {
+        var palM = toon(0xb98a52), palD = toon(0x7a5530);
+        for (var pr = 0; pr < 9; pr++) { stat.add(GBOX, pr % 3 === 2 ? palD : palM, mBox(b.x, b.y, pr * 0.19, b.hx * 2, b.hy * 2, 0.15), 0.012); }
+        var sgp = signBoard('PALLET BANK', 1.2, 0.32); sgp.rotation.y = Math.PI / 2; sgp.position.copy(W(b.x + b.hx + 0.05, b.y, b.h + 0.2)); scene.add(sgp);
+      }
+      // the Putt tee mats and the Pitch tee pad
+      [['short', 'SHORT', 0x2f6b3a], ['long', 'LONG', 0x2f6b3a], ['tee', 'TEE ' + h.n, 0xa8402a]].forEach(function (t) {
+        var spot = h[t[0]], bearing = Math.atan2(h.basket.x - spot.x, h.basket.y - spot.y);
+        var mat = paintPanel(t[0] === 'tee' ? 1.4 : 1.1, t[0] === 'tee' ? 2.0 : 1.5, 256, function (g, w, hh) { g.fillStyle = '#' + t[2].toString(16).padStart(6, '0'); g.fillRect(0, 0, w, hh); g.strokeStyle = '#fff3df'; g.lineWidth = 10; g.strokeRect(8, 8, w - 16, hh - 16); label(g, t[1], w / 2, hh * 0.82, t[0] === 'tee' ? 40 : 50, '#fff3df', {}); });
+        mat.rotation.x = -Math.PI / 2; mat.rotation.z = -bearing; mat.position.copy(W(spot.x - Math.sin(bearing) * 0.3, spot.y - Math.cos(bearing) * 0.3, 0.01)); scene.add(mat);
+      });
+    });
+  }
+
+
   /* ---------- the disc ---------- */
   function makeDisc(color) {
     var r = 0.1055, m = new T.Mesh(latheGeom([[0.001, -0.008], [r * 0.9, -0.01], [r, -0.004], [r, 0.004], [r * 0.92, 0.01], [0.001, 0.011]], 32), new T.MeshToonMaterial({ color: color || 0xF2A13B, gradientMap: grad })); outline(m, 0.008);
@@ -3079,7 +3264,8 @@ var VenueScene = (function () {
     return grp;
   }
 
-  return { build: build, makeDisc: makeDisc, W: W, toon: toon, outline: outline, grad: grad, glowShell: glowShell };
+  KIT = { T: T, C: C, W: W, toon: toon, glow: glow, outline: outline, canvas: canvas, rnd: rnd, TEX: TEX, paintPanel: paintPanel, signBoard: signBoard, label: label, cylGeom: cylGeom, latheGeom: latheGeom, mBox: mBox, at: at, GBOX: GBOX, plane: plane, dressHoles: dressHoles, Batch: Batch, glowShell: glowShell };
+  return { build: build, makeDisc: makeDisc, W: W, toon: toon, outline: outline, grad: grad, glowShell: glowShell, kit: KIT };
 })();
 
 
@@ -3088,7 +3274,7 @@ var VenueScene = (function () {
 (function () {
   var run = function () { if (run.done) return; run.done = true;
 /* =====================================================================
-   PUTT LEAGUE · THE TAPROOM · GAME
+   PUTT LEAGUE · GAME (plays whichever venue is live: Course.use, ?venue=<id>)
    Modes: PUTT (2 putts a hole), PITCH (tee to basket vs par), UNLIMITED (free throws from any tee).
    Flick the disc (Putt Reader 1.1 reading) -> the engines simulate the whole throw -> it plays back
    in the cel-shaded venue -> every reason to score pops, big. Each hole opens with a drone flyover.
@@ -3096,6 +3282,8 @@ var VenueScene = (function () {
 (function () {
   'use strict';
   var T = THREE, C = Course, SC = VenueScene, FT = 0.3048;
+  // the live venue: ?venue=<id> on the page, else the first registered
+  var V = (function () { var q = /[?&]venue=([\w-]+)/.exec(location.search); try { return C.use(q ? q[1] : undefined); } catch (e) { return C.use(); } })();
   var E = { P: FlightlinePhysics, FB: FlightlineBasket, CT: DDMContact, MATS: DDMMaterials };
   C.installFloor(E.MATS);
   var $ = function (id) { return document.getElementById(id); };
@@ -3111,6 +3299,7 @@ var VenueScene = (function () {
   catch (e) { $('loading').textContent = 'THIS BROWSER CANNOT DRAW 3D HERE'; return; }
   renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
   var world = SC.build(), scene = world.scene;
+  var logoV = document.querySelector('#logo .c'); if (logoV) logoV.textContent = V.name;
   var camera = new T.PerspectiveCamera(60, 1, 0.05, 260);
   var discs3 = C.DISCS.map(function (d) { var m = SC.makeDisc(d.color); m.visible = false; scene.add(m); return m; });
   var disc = discs3[0];
@@ -3141,8 +3330,9 @@ var VenueScene = (function () {
   function distTo(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
   function basketPt() { var b = hole().basket; return { x: b.x, y: b.y }; }
   function aimTarget() { return G.target || C.defaultTarget(G.hole, origin()) || { x: hole().basket.x, y: hole().basket.y }; }
-  // the lid on a throw: the rafters if you are inside; the door frame if you are outside throwing back in
-  function ceilingFor(o, t) { if (o.y < C.ROOM.y1) return 5.2; t = t || aimTarget(); var bk = hole().basket; return (t.y < C.ROOM.y1 || bk.y < C.ROOM.y1) ? C.DOOR.h - 0.2 : 0; }
+  // the lid on a throw (the venue's: the rafters if you are inside, the door frame if you are outside throwing back in)
+  function ceilingFor(o, t) { return V.ceilingFor ? V.ceilingFor(o, t || aimTarget(), hole().basket) : 0; }
+  function airCap(x, y) { return V.airCap ? V.airCap(x, y) : 30; }
 
   /* ---------- layout ---------- */
   var L = {};
@@ -3419,7 +3609,7 @@ var VenueScene = (function () {
     plane.setFromNormalAndCoplanarPoint(dir.clone().negate(), onP);
     ndc.set(sx / L.W * 2 - 1, -(sy / L.H) * 2 + 1); ray.setFromCamera(ndc, camera);
     var t = null;
-    if (ray.ray.intersectPlane(plane, hitP) && hitP.y >= 0.02) t = { x: hitP.x, y: -hitP.z, z: Math.min(hitP.y, -hitP.z < C.ROOM.y1 ? 4.0 : 30), air: true };
+    if (ray.ray.intersectPlane(plane, hitP) && hitP.y >= 0.02) t = { x: hitP.x, y: -hitP.z, z: Math.min(hitP.y, airCap(hitP.x, -hitP.z)), air: true };
     else if (ray.ray.intersectPlane(ground, hitP)) t = { x: hitP.x, y: -hitP.z, z: 0.02, floor: true };
     if (!t || distTo(t, o) < 1.0) return false;
     G.target = { x: t.x, y: t.y, z: t.z, floor: !!t.floor, air: !!t.air };
@@ -3445,7 +3635,7 @@ var VenueScene = (function () {
     plane.setFromNormalAndCoplanarPoint(dir0.clone().negate(), onP0);
     var pHit = ray.ray.intersectPlane(plane, hitP) ? hitP.clone() : null, tPl = pHit ? camera.position.distanceTo(pHit) : Infinity;
     if (pHit && pHit.y >= 0.02 && (!h || h.distance > tPl + 0.05)) {
-      var pz = Math.min(pHit.y, -pHit.z < C.ROOM.y1 ? 4.0 : 30);
+      var pz = Math.min(pHit.y, airCap(pHit.x, -pHit.z));
       setTarget({ x: pHit.x, y: -pHit.z, z: pz, floor: false, air: pz > 0.4 }); flashHint('TARGET SET'); return;
     }
     if (!h) return;
@@ -3453,7 +3643,7 @@ var VenueScene = (function () {
     var d = distTo({ x: X, y: Y }, o2);
     if (d < 1.0) { flashHint('PICK A SPOT FARTHER OUT'); return; }
     var onFloor = world.grounds.indexOf(h.object) >= 0 || Z < 0.05;
-    var zz = onFloor ? 0.02 : Math.min(Math.max(0.05, Z), Y < C.ROOM.y1 ? 4.0 : 30); setTarget({ x: X, y: Y, z: zz, floor: onFloor, air: !onFloor && zz > 0.4 });
+    var zz = onFloor ? 0.02 : Math.min(Math.max(0.05, Z), airCap(X, Y)); setTarget({ x: X, y: Y, z: zz, floor: onFloor, air: !onFloor && zz > 0.4 });
     flashHint(onFloor ? 'TARGET: THE FLOOR' : 'TARGET SET');
   }
   function setTarget(t) { G.target = t; scheduleSolve(); setHint(); }
@@ -3461,15 +3651,11 @@ var VenueScene = (function () {
 
   /* ---------- cameras ---------- */
   var cam = { pos: new T.Vector3(), look: new T.Vector3(), init: false };
-  var BLOCK = [];
-  C.KETTLES.forEach(function (k) { BLOCK.push([k.x, k.y, k.r + 0.45]); });
-  C.FERMENTERS.forEach(function (f) { BLOCK.push([f.x, f.y, f.r + 0.45]); });
-  C.POSTS_X.forEach(function (x) { C.POSTS_Y.forEach(function (y) { BLOCK.push([x, y, 0.55]); }); });
-  BLOCK.push([C.OAK.x, C.OAK.y, 1.0]); BLOCK.push([C.TRUCK.x, C.TRUCK.y, 3.4]); BLOCK.push([C.FIREPIT.x, C.FIREPIT.y, 1.3]); BLOCK.push([C.SILO.x, C.SILO.y, C.SILO.r + 0.6]);
+  var VCAM = V.cam || {}, BLOCK = VCAM.blockers || [];   // [x, y, radius]: posts, tanks, trees the camera keeps out of
+  function isInside(x, y, m) { return V.inside ? V.inside(x, y, m) : false; }
   function safe(v, inside) {
-    var R = C.ROOM, Gd = C.GARDEN, D = C.DOOR, x = v.x, y = -v.z, isIn = inside != null ? inside : y < R.y1;
-    if (isIn) { x = clamp(x, R.x0 + 0.35, R.x1 - 0.35); y = clamp(y, R.y0 + 0.35, R.y1 - 0.35); v.y = clamp(v.y, 0.35, 5.2); }
-    else { x = clamp(x, Gd.x0 + 0.4, Gd.x1 - 0.4); y = clamp(y, R.y1 + 0.5, C.LOT.y1 - 0.5); v.y = Math.max(0.35, v.y); }
+    var x = v.x, y = -v.z, isIn = inside != null ? inside : isInside(x, y);
+    if (VCAM.clamp) { var q = VCAM.clamp(x, y, v.y, isIn); x = q.x; y = q.y; v.y = q.z; }
     for (var i = 0; i < BLOCK.length; i++) { var b = BLOCK[i], dx = x - b[0], dy = y - b[1], d = Math.hypot(dx, dy); if (d < b[2] && v.y < 5.5) { if (d < 1e-4) { dx = -1; dy = 0; d = 1; } x = b[0] + dx / d * b[2]; y = b[1] + dy / d * b[2]; } }
     v.x = x; v.z = -y; return v;
   }
@@ -3549,7 +3735,7 @@ var VenueScene = (function () {
   }
   function dirFrom(o, t) { var d = new T.Vector3(t.x - o.x, 0, -(t.y - o.y)); return d.normalize(); }
   function viewCam(v) {
-    var o = origin(), lt = (G.aiming && G.lookFreeze) ? G.lookFreeze : (G.target || basketPt()), bk = hole().basket, O = SC.W(o.x, o.y, 0), d = dirFrom(o, lt), side = new T.Vector3(-d.z, 0, d.x), inside = o.y < C.ROOM.y1;
+    var o = origin(), lt = (G.aiming && G.lookFreeze) ? G.lookFreeze : (G.target || basketPt()), bk = hole().basket, O = SC.W(o.x, o.y, 0), d = dirFrom(o, lt), side = new T.Vector3(-d.z, 0, d.x), inside = isInside(o.x, o.y);
     var c;
     if (v === 'drone') {
       var B = SC.W(bk.x, bk.y, 0), dist = distTo(o, bk), mid = O.clone().lerp(B, 0.5), db = dirFrom(o, bk), sb = new T.Vector3(-db.z, 0, db.x);
@@ -3630,7 +3816,7 @@ var VenueScene = (function () {
   var HOLE_COL = [0xffc93c, 0x5fe0c8, 0xff5fa2, 0x9ef01a, 0xff8f3c, 0x8ed8ff];
   function pathPts(h) {
     var H = C.HOLES[h], t = H.tee, b = H.basket, pts = [t];
-    var w = C.defaultTarget(h, t); if (w) pts.push({ x: w.x, y: C.ROOM.y1 - 1.5 }, { x: w.x, y: C.ROOM.y1 + 1.5 });
+    if (V.introVia) pts = pts.concat(V.introVia(H, t));
     pts.push(b); return pts;
   }
   function buildIntroObjs() {
@@ -3670,7 +3856,7 @@ var VenueScene = (function () {
       app.appendChild(el); pins.push({ el: el, h: h, at: [0.08, 0.24, 0.4, 0.55, 0.64, 0.72][h] });
     });
     var par = C.HOLES.reduce(function (s, H) { return s + H.par; }, 0);
-    $('titleCard').hidden = false; $('tcK').textContent = 'WELCOME TO'; $('tcBig').textContent = 'THE TAPROOM';
+    $('titleCard').hidden = false; $('tcK').textContent = 'WELCOME TO'; $('tcBig').textContent = V.name;
     $('tcM').textContent = C.HOLES.length + ' HOLES' + (G.mode === 'pitch' ? ' · PAR ' + par : G.mode === 'putt' ? ' · ' + C.HOLES.length * 2 + ' PUTTS' : ' · OPEN PLAY');
     var b = $('tcBox'); b.style.animation = 'none'; void b.offsetWidth; b.style.animation = '';
     lights(2.5, 'rainbow');
@@ -3698,44 +3884,14 @@ var VenueScene = (function () {
 
   /* ---------- bonus targets: called out in the flyover, then the thing itself glows ---------- */
   function box3(sx, sz, sy) { return new T.BoxGeometry(sx, sz, sy); }
-  var BONUS = [
-    [{ id: 'gong', color: 0xffc93c, label: 'RING THE GONG', sub: 'BANK IT IN: JACKPOT', p: function () { var b = C.HOLES[0].backstop; return [b.x, b.y, b.z + b.r + 0.3]; },
-       shells: function () { var b = C.HOLES[0].backstop, g = new T.CylinderGeometry(b.r, b.r, 0.12, 32); g.rotateX(Math.PI / 2); return [[g, b.x, b.y, b.z]]; } },
-     { id: 'stack', color: 0xff8f6b, label: 'OVER THE BARRELS', sub: '+800 ON A MAKE', p: function () { return [C.STACK.x, C.STACK.y, 1.6]; }, when: function () { return origin().y < C.STACK.y; },
-       shells: function () { return [[box3(2.15, 1.3, 0.95), C.STACK.x, C.STACK.y, 0.67]]; } },
-     { id: 'kegs', color: 0x8ed8ff, label: 'OVER THE KEGS', sub: '+800 ON A MAKE', p: function () { return [-0.52, 22.6, 1.5]; }, when: function () { return origin().y < 22.6; },
-       shells: function () { return [[box3(1.85, 1.22, 0.46), -0.52, 22.6, 0.61]]; } },
-     { id: 'skip', color: 0x5fe0c8, label: 'SKIP IT IN', sub: 'AIM AT THE FLOOR, NOSE DOWN: +2000', p: function () { return skipSpot().concat([0.15]); }, floor: true }],
-    [{ id: 'door', color: 0x9ef01a, label: 'THREAD THE DOOR', sub: '+1000 ON A MAKE', p: function () { return [(C.DOOR.x0 + C.DOOR.x1) / 2, C.ROOM.y1, C.DOOR.h + 0.3]; }, when: function () { return origin().y < C.ROOM.y1; },
-       shells: function () { var D = C.DOOR, y = C.ROOM.y1, w = D.x1 - D.x0; return [[box3(0.2, D.h, 0.4), D.x0, y, D.h / 2], [box3(0.2, D.h, 0.4), D.x1, y, D.h / 2], [box3(w, 0.2, 0.4), (D.x0 + D.x1) / 2, y, D.h]]; } },
-     { id: 'kegwall', color: 0xffc93c, label: 'KEG BANK', sub: 'BANK IT IN: JACKPOT', p: function () { var b = C.HOLES[1].backstop; return [b.x, b.y, b.h + 0.4]; },
-       shells: function () { var b = C.HOLES[1].backstop; return [[box3(b.hx * 2, b.h, b.hy * 2), b.x, b.y, b.h / 2]]; } }],
-    [{ id: 'oak', color: 0x9ef01a, label: 'UNDER THE OAK', sub: '+800  ·  TREE KISS +300', p: function () { return [C.OAK.x, C.OAK.y, 3.0]; }, when: function () { return origin().y < C.OAK.y; },
-       shells: function () { return C.OAK.canopy.map(function (c) { var g = new T.IcosahedronGeometry(c.r, 1); g.scale(1, 0.75, 1); return [g, C.OAK.x + c.dx, C.OAK.y + c.dy, c.z]; }); } },
-     { id: 'crates', color: 0xffc93c, label: 'CRATE BANK', sub: 'BANK IT IN: JACKPOT', p: function () { var b = C.HOLES[2].backstop; return [b.x, b.y, b.h + 0.4]; },
-       shells: function () { var b = C.HOLES[2].backstop; return [[box3(b.hx * 2, b.h, b.hy * 2), b.x, b.y, b.h / 2]]; } },
-     { id: 'truck', color: 0xff8f6b, label: 'TACO TRUCK', sub: 'HIT IT: +250', p: function () { return [C.TRUCK.x, C.TRUCK.y, C.TRUCK.h + 0.5]; },
-       shells: function () { var t = C.TRUCK; return [[box3(t.hx * 2, t.h - 0.3, t.hy * 2), t.x, t.y, 0.3 + (t.h - 0.3) / 2]]; } }],
-    [{ id: 'silo', color: 0x8ed8ff, label: 'SILO SLAM', sub: 'BANK OFF THE SILO: +1500', p: function () { return [C.SILO.x, C.SILO.y, 5.5]; },
-       shells: function () { var s = C.SILO, g = new T.CylinderGeometry(s.r, s.r, s.h, 28); return [[g, s.x, s.y, s.h / 2]]; } },
-     { id: 'sacks', color: 0xffc93c, label: 'SACK BANK', sub: 'BANK IT IN: JACKPOT', p: function () { var b = C.HOLES[3].backstop; return [b.x, b.y, b.h + 0.5]; },
-       shells: function () { var b = C.HOLES[3].backstop; return [[-0.55, 0], [0, 0], [0.55, 0], [-0.28, 0.5], [0.28, 0.5], [0, 1.0]].map(function (q) { var sg = new T.SphereGeometry(0.34, 12, 8); sg.scale(1.0, 0.75, 1.25); return [sg, b.x + q[0], b.y, 0.26 + q[1]]; }); } }],
-    [{ id: 'under', color: 0x5fe0c8, label: 'UNDER THE TRUCK', sub: 'SKIP IT UNDER: +1000', p: function () { return [C.BOX_TRUCK.x, C.BOX_TRUCK.y, C.BOX_TRUCK.z1 + 0.5]; },
-       shells: function () { var t = C.BOX_TRUCK; return [[box3(t.hx * 2 - 0.1, t.z0 - 0.05, t.hy * 2 - 0.1), t.x, t.y, t.z0 / 2]]; } },
-     { id: 'pallets', color: 0xffc93c, label: 'PALLET BANK', sub: 'BANK IT IN: JACKPOT', p: function () { var b = C.HOLES[4].backstop; return [b.x, b.y, b.h + 0.5]; },
-       shells: function () { var b = C.HOLES[4].backstop; return [[box3(b.hx * 2, b.h, b.hy * 2), b.x, b.y, b.h / 2]]; } }],
-    [{ id: 'under6', color: 0x5fe0c8, label: 'UNDER THE TRUCK', sub: 'SKIP IT UNDER: +1000', p: function () { return [C.BOX_TRUCK.x, C.BOX_TRUCK.y, C.BOX_TRUCK.z1 + 0.5]; },
-       shells: function () { var t = C.BOX_TRUCK; return [[box3(t.hx * 2 - 0.1, t.z0 - 0.05, t.hy * 2 - 0.1), t.x, t.y, t.z0 / 2]]; } },
-     { id: 'dock', color: 0xffc93c, label: 'DOCK BANK', sub: 'BANK IT IN: JACKPOT', p: function () { var b = C.HOLES[5].backstop; return [b.x, b.y - b.hy, b.h + 0.6]; },
-       shells: function () { var b = C.HOLES[5].backstop, bk = C.HOLES[5].basket; return [[box3(3.2, b.h, 0.3), bk.x, b.y - b.hy + 0.15, b.h / 2]]; } }]
-  ];
+  var BONUS = C.venue.bonus ? C.venue.bonus({ T: T, C: C, box3: box3, origin: origin, skipSpot: skipSpot }) : [];
   function skipSpot() { var o = origin(), b = hole().basket, d = distTo(o, b) || 1; return [b.x - (b.x - o.x) / d * 1.8, b.y - (b.y - o.y) / d * 1.8]; }
   var glows = [];
   var skipRing = new T.Mesh(new T.RingGeometry(0.25, 0.6, 40), new T.MeshBasicMaterial({ color: 0x5fe0c8, transparent: true, opacity: 0.5, side: T.DoubleSide, depthWrite: false, blending: T.AdditiveBlending }));
   skipRing.rotation.x = -Math.PI / 2; skipRing.visible = false; scene.add(skipRing);
   function buildGlows() {
     glows.forEach(function (g) { g.objs.forEach(function (o) { scene.remove(o); }); }); glows = [];
-    BONUS[G.hole].forEach(function (b) {
+    (BONUS[G.hole] || []).forEach(function (b) {
       var objs = [];
       if (b.shells) b.shells().forEach(function (sh) { var m = SC.glowShell(sh[0], b.color); m.position.copy(SC.W(sh[1], sh[2], sh[3])); scene.add(m); objs.push(m); });
       glows.push({ b: b, objs: objs });
@@ -3753,7 +3909,7 @@ var VenueScene = (function () {
   var callouts = [];
   function buildCallouts() {
     callouts.forEach(function (c) { c.el.remove(); }); callouts = [];
-    BONUS[G.hole].forEach(function (b, i) {
+    (BONUS[G.hole] || []).forEach(function (b, i) {
       if (b.when && !b.when()) return;
       var el = document.createElement('div'); el.className = 'callout panel'; el.style.setProperty('--r', (i % 2 ? 3 : -3) + 'deg'); el.style.setProperty('--gc', '#' + b.color.toString(16).padStart(6, '0'));
       el.innerHTML = '<b></b><span></span>'; el.firstChild.textContent = b.label; el.lastChild.textContent = b.sub;
@@ -3838,7 +3994,7 @@ var VenueScene = (function () {
     if (P.follow) {
       var mv = P.pos[Math.min(i + 6, S.length - 1)].clone().sub(P.pos[i]); mv.y = 0; if (mv.lengthSq() > 1e-4) { mv.normalize(); P.fdir = P.fdir ? P.fdir.lerp(mv, 0.08).normalize() : mv; }
       var fd = P.fdir || d, low = disc.position.y < 0.4;
-      c = { pos: disc.position.clone().addScaledVector(fd, low ? -2.6 : -3.0).setY(disc.position.y + (low ? 1.7 : 1.2)), look: disc.position.clone(), inside: -disc.position.z < C.ROOM.y1 ? true : false };
+      c = { pos: disc.position.clone().addScaledVector(fd, low ? -2.6 : -3.0).setY(disc.position.y + (low ? 1.7 : 1.2)), look: disc.position.clone(), inside: isInside(disc.position.x, -disc.position.z) };
       safe(c.pos, c.inside); armClamp(disc.position.clone().setY(disc.position.y + 0.3), c.pos); c.free = true;
       setCam(c, 2.6, dt);
     } else if (slowNow || P.nearBasket) {
@@ -3857,7 +4013,7 @@ var VenueScene = (function () {
       // a rail camera a step behind the disc, on the side away from trouble
       P.rdir = P.rdir ? P.rdir.lerp(d, disc.position.y < 0.4 ? 0.06 : 0.25).normalize() : d.clone(); var rd = P.rdir;
       var back = disc.position.clone().addScaledVector(rd, -2.4), sideL = new T.Vector3(rd.z, 0, -rd.x);
-      c = { pos: back.addScaledVector(sideL, 0.3).setY(Math.max(1.5, disc.position.y + 0.55)), look: disc.position.clone().addScaledVector(rd, 1.2), inside: -disc.position.z < C.ROOM.y1 - 0.4 ? true : (-disc.position.z > C.ROOM.y1 + 0.4 ? false : undefined) };
+      c = { pos: back.addScaledVector(sideL, 0.3).setY(Math.max(1.5, disc.position.y + 0.55)), look: disc.position.clone().addScaledVector(rd, 1.2), inside: isInside(disc.position.x, -disc.position.z, 0.4) ? true : (!isInside(disc.position.x, -disc.position.z, -0.4) ? false : undefined) };
       safe(c.pos, c.inside); armClamp(disc.position, c.pos); c.free = true;
       setCam(c, 4.5, dt);
       // and never let the smoothing drag the lens through something
@@ -3957,7 +4113,7 @@ var VenueScene = (function () {
   function lights(sec, kind) { LT.t = sec; LT.kind = kind; }
   var baseBulb = new T.Color(0xffc46b), tmpC = new T.Color();
   function stepLights(dt, clock) {
-    if (LT.t > 0) {
+    if (LT.t > 0 && world.bulbMat) {
       LT.t -= dt;
       if (LT.kind === 'rainbow') tmpC.setHSL((clock * 1.5) % 1, 0.9, 0.62); else tmpC.setHSL(0.12, 1, 0.55 + 0.25 * Math.sin(clock * 30));
       world.bulbMat.color.copy(tmpC);
@@ -4167,7 +4323,7 @@ var VenueScene = (function () {
     G.holeLog.forEach(function (l) { lines += '<span>' + l.n + ' · ' + l.text + '</span><span>+' + fmt(l.pts) + '</span>'; if (l.strokes) { strokes += l.strokes; par += l.par; } });
     var big = G.mode === 'pitch' ? (strokes - par < 0 ? (strokes - par) + ' UNDER?! ' : strokes - par === 0 ? 'EVEN PAR' : '+' + (strokes - par)) : 'COURSE DONE';
     if (G.mode === 'pitch' && strokes - par < 0) big = (par - strokes) + ' UNDER!';
-    setCard('THE TAPROOM · ' + (G.mode === 'putt' ? 'PUTT' : 'PITCH'), big, G.score, lines, G.score > 20000, 'MENU', 'PLAY AGAIN', 'course');
+    setCard(V.name + ' · ' + (G.mode === 'putt' ? 'PUTT' : 'PITCH'), big, G.score, lines, G.score > 20000, 'MENU', 'PLAY AGAIN', 'course');
     celebrate(G.score > 20000 ? 2 : 1);
   }
   $('replayBtn').addEventListener('click', function () {
@@ -4221,9 +4377,10 @@ var VenueScene = (function () {
       if (G.state === 'aim' && G.view === 'tee' && !reduce) { v.pos.x += Math.sin(clock * 0.6) * 0.05; v.pos.y += Math.sin(clock * 0.9) * 0.025; }
       setCam(v, 3.2, dt);
     }
-    var cp = camera.position, camIn = -cp.z < C.ROOM.y1 && -cp.z > C.ROOM.y0 && cp.x > C.ROOM.x0 && cp.x < C.ROOM.x1 && cp.y < C.ROOM.h - 0.2;
-    var hideTop = (G.state === 'aim' && G.view === 'drone') || G.state === 'menu' || G.state === 'intro' || (G.state === 'preview' && !camIn) || (G.state === 'flight' && !camIn && cp.y > C.ROOM.h);
-    world.ceiling.visible = !hideTop; world.roof.visible = !hideTop && !camIn;
+    // a roofed venue: lift the ceiling and roof off for the overhead views, keep them on when the camera is under them
+    var cp = camera.position, camIn = VCAM.underRoof ? VCAM.underRoof(cp.x, -cp.z, cp.y) : false;
+    var hideTop = (G.state === 'aim' && G.view === 'drone') || G.state === 'menu' || G.state === 'intro' || (G.state === 'preview' && !camIn) || (G.state === 'flight' && !camIn && cp.y > (VCAM.roofZ != null ? VCAM.roofZ : 0));
+    world.ceiling.visible = !hideTop; if (world.roof) world.roof.visible = !hideTop && !camIn;
     if (G.state === 'aim') {
       var tp = targetWorld(), sp = screenOf(tp), at = $('aimTag');
       // no reticle until you place one

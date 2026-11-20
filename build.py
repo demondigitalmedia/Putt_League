@@ -1,9 +1,12 @@
-# Assemble Putt League Brewery into one HTML page (three.js r128 from cdnjs, everything else inline).
+# Assemble Putt League into one HTML page (three.js r128 from cdnjs, everything else inline).
+# Every venue in src/venues/ goes in (<id>.js, then <id>.scene.js); the first registered is the default, ?venue=<id> picks another.
 import sys, os
 D = os.path.dirname(os.path.abspath(__file__)); S = os.path.join(D, 'src')
+venues = sorted(f for f in os.listdir(os.path.join(S, 'venues')) if f.endswith('.js'))
+venues.sort(key=lambda f: (f != 'taproom.js' and f != 'taproom.scene.js', f))   # the Taproom stays the default
 local = '--local' in sys.argv
 shell = open(os.path.join(S, 'shell.html')).read()
-js = ''.join(open(os.path.join(S, f)).read() + '\n' for f in ['flightline-physics.js', 'flightline-basket.js', 'ddm-materials.js', 'ddm-contact.js', 'course.js', 'scene.js'])
+js = ''.join(open(os.path.join(S, f)).read() + '\n' for f in ['flightline-physics.js', 'flightline-basket.js', 'ddm-materials.js', 'ddm-contact.js', 'venues.js'] + ['venues/' + v for v in venues] + ['course.js', 'scene.js'])
 game = open(os.path.join(S, 'game.js')).read()
 boot = """(function () {
   var run = function () { if (run.done) return; run.done = true;
